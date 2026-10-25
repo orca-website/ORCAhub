@@ -1499,7 +1499,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 end))
 T.Antidotes:Toggle("Auto Click", false, function(state)
 	autoClick = state
-	Notify("Auto Click", state and "Auto Click is now ON" or "Auto Click is now OFF")
+	Notify("Auto Click", state and "Auto Click is now ON" or "Anti Click is now OFF")
 end)
 T.Antidotes:Slider("Click Speed (per sec)", 1, 30, 10, function(v) clickCps = v end)
 
@@ -1820,7 +1820,7 @@ permBtn = T.Teleport:ColorToggle("Permanent Teleport", function(state)
 	else
 		permOn = false
 		permTarget = nil
-		Notify("Permanent Teleport", "Stopped following", C.mars2, "pin")
+		Notify("Permanent Teleport", "Stopped following", C.mars, "pin")
 	end
 end, "pin")
 
@@ -1841,7 +1841,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (التعديل النهائي المطابق تماماً لـ VR7)
+-- BANG & BANG FACE (التعديل النهائي والمضبوط 100%)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1956,12 +1956,12 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				-- BANG: تثبيت الوقفة الاحترافية (مثل العسكر أو حركة VR7) خلف اللاعب مباشرة
+				-- BANG: تثبيت الوقفة الاحترافية خلف اللاعب مباشرة
 				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ) * CFrame.Angles(0, 0, 0)
 			elseif faceOn and tHead then
-				-- FACE BANG: تلتصق بالوجه مباشرة من الأمام (وليس خلف الراس)
+				-- FACE BANG: تلتصق بالوجه مباشرة وبشكل صحيح تماماً وجهاً لوجه
 				myHum.Sit = true
-				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.2, -1.1 - (offsetZ * 0.3)) * CFrame.Angles(0, 0, 0)
+				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.2, 1.1 + (offsetZ * 0.3)) * CFrame.Angles(0, 0, 0)
 			end
 		end
 	end
