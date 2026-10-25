@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (مقاسات مضبوطة تماماً مثل سكربت VR7)
+-- BANG & BANG FACE (تم رفع الارتفاع شوية زيادة لتطابق المطلوب تماماً)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1960,9 +1960,9 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 				-- BANG: الوقفة خلف اللاعب مباشرة
 				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ) * CFrame.Angles(0, 0, 0)
 			elseif faceOn and tHead then
-				-- FACE BANG: تم رفع الارتفاع للوضع المناسب تماماً مثل VR7
+				-- FACE BANG: تم رفع الارتفاع شويةتين إضافيتين (0.55) ليتطابق تماماً
 				myHum.Sit = true
-				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.45, -1.05 - (offsetZ * 0.3)) * CFrame.Angles(0, math.pi, 0)
+				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.55, -1.0 - (offsetZ * 0.3)) * CFrame.Angles(0, math.pi, 0)
 			end
 		end
 	end
