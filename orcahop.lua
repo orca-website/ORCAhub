@@ -1841,7 +1841,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (التعديل النهائي والدقيق)
+-- BANG & BANG FACE (التعديل النهائي المطابق تماماً لـ VR7)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1956,12 +1956,12 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				-- BANG: خلف اللاعب بوقفة مثالية وسلسة
+				-- BANG: تثبيت الوقفة الاحترافية (مثل العسكر أو حركة VR7) خلف اللاعب مباشرة
 				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ) * CFrame.Angles(0, 0, 0)
 			elseif faceOn and tHead then
-				-- FACE BANG: تلتصق تماماً برأس اللاعب (Head) مهما كان حجم جسمه، وجهاً لوجه
+				-- FACE BANG: تلتصق بالوجه مباشرة من الأمام (وليس خلف الراس)
 				myHum.Sit = true
-				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.2, 1.1 + (offsetZ * 0.3)) * CFrame.Angles(0, math.pi, 0)
+				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.2, -1.1 - (offsetZ * 0.3)) * CFrame.Angles(0, 0, 0)
 			end
 		end
 	end
