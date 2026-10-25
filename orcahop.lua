@@ -1057,8 +1057,9 @@ local function stripByToggle()
 end
 
 local function pickBody(descs)
+	local t = nil
 	for _, d in ipairs(descs) do
-		local t = {d.Torso, d.RightArm, d.LeftArm, d.RightLeg, d.LeftLeg, d.Head}
+		t = {d.Torso, d.RightArm, d.LeftArm, d.RightLeg, d.LeftLeg, d.Head}
 		for _, v in ipairs(t) do
 			if v and v > 0 then return t end
 		end
@@ -1841,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (التعديل النهائي والمضبوط 100%)
+-- BANG & BANG FACE (التعديل النهائي والاصلاح التام للاتجاه والوجوه)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1956,12 +1957,12 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				-- BANG: تثبيت الوقفة الاحترافية خلف اللاعب مباشرة
+				-- BANG: الوقفة الاحترافية خلف اللاعب مباشرة
 				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ) * CFrame.Angles(0, 0, 0)
 			elseif faceOn and tHead then
-				-- FACE BANG: تلتصق بالوجه مباشرة وبشكل صحيح تماماً وجهاً لوجه
+				-- FACE BANG: تلصق في الوجه مباشرة من الأمام وباتجاه صحيح تماماً (مقابل لـ Head مع دوران 180 درجة pi)
 				myHum.Sit = true
-				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.2, 1.1 + (offsetZ * 0.3)) * CFrame.Angles(0, 0, 0)
+				mRoot.CFrame = tHead.CFrame * CFrame.new(0, -0.2, -1.1 - (offsetZ * 0.3)) * CFrame.Angles(0, math.pi, 0)
 			end
 		end
 	end
