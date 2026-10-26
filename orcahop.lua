@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (تم فصل الـ Stance عن Face Bang ليعمل الجلوس بشكل صحيح)
+-- BANG & BANG FACE (إلغاء الوقفة العمودية تماماً عند إيقافها أو تشغيل Face Bang)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1882,10 +1882,8 @@ local function stopBangAnim()
 		bangAnimTrack:Destroy()
 		bangAnimTrack = nil
 	end
-	-- نقوم بإرجاع الـ Stance فقط لو كان BANG العادي هو اللي شغال
-	if bangOn then
-		applyStance(false)
-	end
+	-- إعادة تفعيل سكريبت الحركة الأصلي وإلغاء الوقفة العمودية بالكامل فوراً عند إيقاف أي منهما
+	applyStance(false)
 	local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
 	if hum then
 		hum.Sit = false
@@ -1895,16 +1893,18 @@ end
 local function playBangAnim(animId, isFaceBang)
 	stopBangAnim()
 	
-	-- الـ Stance يتفعل فقط لـ BANG العادي، ولا يلمس الـ Face Bang أبداً لتظل في وضعية الجلوس
-	if not isFaceBang then
+	-- إذا كانت Face Bang: لا نطبق الوقفة العمودية أبداً ونضمن جلوس اللاعب فوراً
+	if isFaceBang then
+		applyStance(false)
+		local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+		if hum then hum.Sit = true end
+	else
+		-- BANG العادي يفعل الوقفة العمودية
 		applyStance(true)
 	end
 
 	local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
 	if hum then
-		if isFaceBang then
-			hum.Sit = true
-		end
 		local anim = Instance.new("Animation")
 		anim.AnimationId = "rbxassetid://" .. tostring(animId)
 		bangAnimTrack = hum:LoadAnimation(anim)
@@ -1952,7 +1952,7 @@ faceBtn = T.Bang:ColorToggle("BANG FACE", function(state)
 		end
 		bangTarget, bangAway = {id = p.UserId, name = p.Name, player = p}, false
 		
-		-- تشغيل الـ Face Bang مع الجلوس فوراً
+		-- تفعيل الـ Face Bang مع إجبار الجلوس ومنع الوقفة العمودية تماماً
 		playBangAnim(148840371, true)
 		Notify("BANG FACE Activated  " .. p.Name, "", C.mars, "user")
 	else
