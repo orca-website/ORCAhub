@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (تم رفع الارتفاع شوية زيادة لتطابق المطلوب تماماً)
+-- BANG & BANG FACE (معايرة محسنة لتطابق وتناسق وقفة VR7 بدقة)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1957,10 +1957,10 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				-- BANG: الوقفة خلف اللاعب مباشرة
-				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ) * CFrame.Angles(0, 0, 0)
+				-- BANG: ضبط المسافة والزاوية بدقة لتطابق وقفة VR7 الأنيقة من الخلف
+				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.05 + (offsetZ * 0.4)) * CFrame.Angles(0, 0, 0)
 			elseif faceOn and tHead then
-				-- FACE BANG: تم رفع الارتفاع شويةتين إضافيتين (0.55) ليتطابق تماماً
+				-- FACE BANG: إحداثيات الارتفاع والمحاذاة المظبوطة
 				myHum.Sit = true
 				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.55, -1.0 - (offsetZ * 0.3)) * CFrame.Angles(0, math.pi, 0)
 			end
