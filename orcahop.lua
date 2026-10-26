@@ -1957,7 +1957,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				-- BANG: تعديل الـ CFrame لتصبح الوقفة خلف اللاعب بشكل مستقيم تماماً وثابت
+				-- BANG: تم ضبط الـ CFrame هنا ليكون بالاتجاه المستقيم تماماً بدون دوران جانبي (0, 0, 0) وخلف اللاعب مباشرة
 				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ) * CFrame.Angles(0, 0, 0)
 			elseif faceOn and tHead then
 				myHum.Sit = true
