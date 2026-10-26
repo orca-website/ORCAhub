@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (معدلة لتكون BANG بشكل مستقيم ومتناسق تماماً)
+-- BANG & BANG FACE (معدلة لتكون BANG بشكل مستقيم ومتناسق تماماً تماماً)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1957,7 +1957,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				-- BANG: تم ضبط الـ CFrame هنا ليكون بالاتجاه المستقيم تماماً بدون دوران جانبي (0, 0, 0) وخلف اللاعب مباشرة
+				-- BANG: تثبيت الوقفة بشكل مستقيم تماماً وعمودي بناءً على وجهة اللاعب المستهدف (بدون ميلان وبشكل نظيف)
 				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ) * CFrame.Angles(0, 0, 0)
 			elseif faceOn and tHead then
 				myHum.Sit = true
