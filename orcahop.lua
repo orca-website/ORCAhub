@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (إلغاء الوقفة العمودية تماماً عند إيقافها أو تشغيل Face Bang)
+-- BANG & BANG FACE (محدث بالكامل ليلحق الهدف بدقة حتى لو كان يرقص أو نايم)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1882,7 +1882,6 @@ local function stopBangAnim()
 		bangAnimTrack:Destroy()
 		bangAnimTrack = nil
 	end
-	-- إعادة تفعيل سكريبت الحركة الأصلي وإلغاء الوقفة العمودية بالكامل فوراً عند إيقاف أي منهما
 	applyStance(false)
 	local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
 	if hum then
@@ -1893,13 +1892,11 @@ end
 local function playBangAnim(animId, isFaceBang)
 	stopBangAnim()
 	
-	-- إذا كانت Face Bang: لا نطبق الوقفة العمودية أبداً ونضمن جلوس اللاعب فوراً
 	if isFaceBang then
 		applyStance(false)
 		local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
 		if hum then hum.Sit = true end
 	else
-		-- BANG العادي يفعل الوقفة العمودية
 		applyStance(true)
 	end
 
@@ -1952,7 +1949,6 @@ faceBtn = T.Bang:ColorToggle("BANG FACE", function(state)
 		end
 		bangTarget, bangAway = {id = p.UserId, name = p.Name, player = p}, false
 		
-		-- تفعيل الـ Face Bang مع إجبار الجلوس ومنع الوقفة العمودية تماماً
 		playBangAnim(148840371, true)
 		Notify("BANG FACE Activated  " .. p.Name, "", C.mars, "user")
 	else
@@ -1993,8 +1989,9 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyLinearVelocity = Vector3.zero
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
+			-- تتبع لحظي ومباشر للهدف حتى لو كان يتحرك، يرقص، أو نايم
 			if bangOn then
-				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ) * CFrame.Angles(0, 0, 0)
+				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ)
 			elseif faceOn and tHead then
 				myHum.Sit = true
 				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.5, -0.9 + (offsetZ * 0.5)) * CFrame.Angles(0, math.pi, 0)
