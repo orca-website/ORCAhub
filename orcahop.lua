@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (مطابق لأسلوب سكربتات الاحتراف وتناسق التثبيت السلس)
+-- BANG & BANG FACE (مطابق لأسلوب السكربت الاحترافي بدقة تامة)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1850,7 +1850,8 @@ local bangOn, faceOn = false, false
 local bangTarget, bangAway = nil, false
 
 local bangAnimTrack = nil
-local bangSpeed, faceSpeed = 0.8, 0.8
+local PumpIntensity = 1.5
+local PumpSpeed = 0.8
 
 local function stopBangAnim()
 	if bangAnimTrack then
@@ -1872,7 +1873,7 @@ local function playBangAnim(animId)
 		anim.AnimationId = "rbxassetid://" .. tostring(animId)
 		bangAnimTrack = hum:LoadAnimation(anim)
 		bangAnimTrack:Play()
-		bangAnimTrack:AdjustSpeed(bangOn and bangSpeed or faceSpeed)
+		bangAnimTrack:AdjustSpeed(PumpSpeed)
 	end
 end
 
@@ -1924,19 +1925,7 @@ faceBtn = T.Bang:ColorToggle("BANG FACE", function(state)
 	end
 end)
 
-local _, setBangSpeed = T.Bang:Slider("speed bang", 0.1, 5, 0.8, function(v) 
-	bangSpeed = v 
-	if bangAnimTrack and bangOn then bangAnimTrack:AdjustSpeed(v) end
-end, 0.1)
-local _, setFaceSpeed = T.Bang:Slider("speed face bang", 0.1, 5, 0.8, function(v) 
-	faceSpeed = v 
-	if bangAnimTrack and faceOn then bangAnimTrack:AdjustSpeed(v) end
-end, 0.1)
-
-T.Bang:SmallButton("reset", Color3.fromRGB(225, 50, 60), function()
-	setBangSpeed(0.8)
-	setFaceSpeed(0.8)
-end)
+T.Bang:Slider("Bang Intensity", 1, 5, 1.5, function(Value) PumpIntensity = Value end, 0.5)
 
 local bangCounter = 0
 table.insert(conns, RunService.Stepped:Connect(function()
@@ -1950,17 +1939,14 @@ table.insert(conns, RunService.Stepped:Connect(function()
 		
 		if tRoot and mRoot and myHum then
 			bangCounter = bangCounter + 1
-			local speed = bangOn and bangSpeed or faceSpeed
-			local pump = math.sin(bangCounter * speed) * 1.5
+			local pump = math.sin(bangCounter * PumpSpeed) * PumpIntensity 
 			
 			mRoot.Velocity = Vector3.zero
 			mRoot.RotVelocity = Vector3.zero
 			
 			if bangOn then
-				-- BANG بنفس أسلوب التثبيت والثبات الدقيق من الخلف
 				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1 + pump)
 			elseif faceOn and tHead then
-				-- FACE BANG بنفس الأسلوب الاحترافي
 				myHum.Sit = true
 				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0, -1 + pump) * CFrame.Angles(0, math.rad(180), 0)
 			end
