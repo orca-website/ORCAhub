@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (تم تعديل الـ BANG لتكون واقفة ومستقيمة كلياً بدون جلوس)
+-- BANG & BANG FACE (معدلة لتكون BANG بشكل مستقيم ومتناسق تماماً)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1891,8 +1891,6 @@ bangBtn = T.Bang:ColorToggle("BANG", function(state)
 			return
 		end
 		bangTarget, bangAway = {id = p.UserId, name = p.Name, player = p}, false
-		local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-		if hum then hum.Sit = false end -- إيقاف الجلوس نهائياً لتبقى واقفة ومستقيمة كعود
 		playBangAnim(148840371)
 		Notify("BANG Activated  " .. p.Name, "", C.mars, "user")
 	else
@@ -1959,11 +1957,9 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				-- BANG: وقفة مستقيمة ومتطابقة بالخلف تماماً بدون جلوس وبشكل عودي ثابت
-				myHum.Sit = false
+				-- BANG: تعديل الـ CFrame لتصبح الوقفة خلف اللاعب بشكل مستقيم تماماً وثابت
 				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ) * CFrame.Angles(0, 0, 0)
 			elseif faceOn and tHead then
-				-- FACE BANG: بقيت كما هي بدون تعديل
 				myHum.Sit = true
 				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.55, -1.0 - (offsetZ * 0.3)) * CFrame.Angles(0, math.pi, 0)
 			end
