@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (مع دمج نظام تثبيت الوقفة المستقيم تماماً)
+-- BANG & BANG FACE (تثبيت الوقفة ومنع التقدم للامام ليبقى على ظهر الشخصية تماماً)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1853,7 +1853,6 @@ local bangAnimTrack = nil
 local bangSpeed, faceSpeed = 5, 5
 local originalAnimateScript = nil
 
--- دالة تفعيل أو إلغاء تثبيت الوقفة (Stance) كما طلبت من السكربت الثاني
 local function applyStance(active)
 	local character = LP.Character
 	if not character then return end
@@ -1892,7 +1891,7 @@ end
 
 local function playBangAnim(animId)
 	stopBangAnim()
-	applyStance(true) -- تفعيل وقفة الشخصية المستقيمة فوراً عند تشغيل الـ Bang
+	applyStance(true)
 	local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
 	if hum then
 		local anim = Instance.new("Animation")
@@ -1965,7 +1964,6 @@ T.Bang:SmallButton("reset", Color3.fromRGB(225, 50, 60), function()
 	setFaceSpeed(5)
 end)
 
-local bangAnimLoop = 0
 table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 	if (bangOn or faceOn) and bangTarget and bangTarget.player and bangTarget.player.Parent then
 		local targetChar = bangTarget.player.Character
@@ -1976,19 +1974,15 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 		local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
 		
 		if tRoot and mRoot and myHum then
-			local speed = bangOn and bangSpeed or faceSpeed
-			bangAnimLoop = bangAnimLoop + (dt * (speed * 2.5))
-			local offsetZ = math.sin(bangAnimLoop) * 1.1
-			
 			mRoot.AssemblyLinearVelocity = Vector3.zero
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				-- BANG: الوقفة خلف اللاعب مباشرة ومستقيمة
-				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ) * CFrame.Angles(0, 0, 0)
+				-- الوقفة خلف الشخصية مباشرة دون التحرك للأمام لكي لا تندمج معها
+				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1) * CFrame.Angles(0, 0, 0)
 			elseif faceOn and tHead then
 				myHum.Sit = true
-				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.55, -1.0 - (offsetZ * 0.3)) * CFrame.Angles(0, math.pi, 0)
+				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.55, -1.0) * CFrame.Angles(0, math.pi, 0)
 			end
 		end
 	end
