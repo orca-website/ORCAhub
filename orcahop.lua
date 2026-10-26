@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (تعديل الـ BANG لتصبح بالشكل الأيقوني تماماً كـ VR7)
+-- BANG & BANG FACE (تم تعديل الـ BANG لتكون واقفة ومستقيمة كلياً بدون جلوس)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1892,7 +1892,7 @@ bangBtn = T.Bang:ColorToggle("BANG", function(state)
 		end
 		bangTarget, bangAway = {id = p.UserId, name = p.Name, player = p}, false
 		local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-		if hum then hum.Sit = true end
+		if hum then hum.Sit = false end -- إيقاف الجلوس نهائياً لتبقى واقفة ومستقيمة كعود
 		playBangAnim(148840371)
 		Notify("BANG Activated  " .. p.Name, "", C.mars, "user")
 	else
@@ -1959,11 +1959,11 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				-- BANG: مطابقة شكل الأيقونة الفعلي لـ VR7 (خلف الضحية تماماً باتجاه متطابق)
-				myHum.Sit = true
+				-- BANG: وقفة مستقيمة ومتطابقة بالخلف تماماً بدون جلوس وبشكل عودي ثابت
+				myHum.Sit = false
 				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ) * CFrame.Angles(0, 0, 0)
 			elseif faceOn and tHead then
-				-- FACE BANG: تم تركها كما طلبت تماماً بدون أي تعديل
+				-- FACE BANG: بقيت كما هي بدون تعديل
 				myHum.Sit = true
 				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.55, -1.0 - (offsetZ * 0.3)) * CFrame.Angles(0, math.pi, 0)
 			end
