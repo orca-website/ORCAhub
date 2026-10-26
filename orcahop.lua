@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (محدث بالكامل ليلحق الهدف بدقة حتى لو كان يرقص أو نايم)
+-- BANG & BANG FACE (تم تعديل الـ Bang العادي ليلحق الظهر تماماً كالـ Face Bang)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1989,9 +1989,10 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyLinearVelocity = Vector3.zero
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
-			-- تتبع لحظي ومباشر للهدف حتى لو كان يتحرك، يرقص، أو نايم
+			-- استخدام Head أو جزء أساسي ديناميكي للـ Bang ليلحق الظهر تماماً حتى لو كان يرقص أو نايم
 			if bangOn then
-				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ)
+				local targetPart = targetChar:FindFirstChild("UpperTorso") or targetChar:FindFirstChild("Torso") or tRoot
+				mRoot.CFrame = targetPart.CFrame * CFrame.new(0, 0, 1.1 + offsetZ)
 			elseif faceOn and tHead then
 				myHum.Sit = true
 				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.5, -0.9 + (offsetZ * 0.5)) * CFrame.Angles(0, math.pi, 0)
@@ -2083,11 +2084,11 @@ local function addTracked(p)
 	e.timeL = Label({Text = "+ 00:00:00", Font = Enum.Font.GothamBlack, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Right,
 		Size = UDim2.fromOffset(100, 18), Position = UDim2.new(1, -152, 0, 12), Parent = card})
 	e.statusL = Label({Text = "IN SERVER", Font = Enum.Font.GothamBold, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Right,
-		Size = UDim2.fromOffset(100, 14), Position = UDim2.new(1, -152, 0, 32), Parent = card})
+		Size = UDim2.new(1, -152, 0, 32), Parent = card})
 	e.joinL = Label({Text = "", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = GREEN,
-		Size = UDim2.fromOffset(84, 16), Position = UDim2.fromOffset(74, 64), Parent = card})
+		Size = UDim2.new(1, -84, 0, 16), Position = UDim2.fromOffset(74, 64), Parent = card})
 	e.leftL = Label({Text = "", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = RED,
-		Size = UDim2.fromOffset(84, 16), Position = UDim2.fromOffset(162, 64), Parent = card})
+		Size = UDim2.new(1, -84, 0, 16), Position = UDim2.fromOffset(162, 64), Parent = card})
 
 	local rm = New("TextButton", {
 		Size = UDim2.fromOffset(24, 24), Position = UDim2.new(1, -34, 0, 8), BackgroundColor3 = C.panel,
