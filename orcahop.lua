@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (معايرة محسنة لتطابق وتناسق وقفة VR7 بدقة)
+-- BANG & BANG FACE (مطابق لأسلوب سكربتات الاحتراف وتناسق التثبيت السلس)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1850,7 +1850,7 @@ local bangOn, faceOn = false, false
 local bangTarget, bangAway = nil, false
 
 local bangAnimTrack = nil
-local bangSpeed, faceSpeed = 5, 5
+local bangSpeed, faceSpeed = 0.8, 0.8
 
 local function stopBangAnim()
 	if bangAnimTrack then
@@ -1924,45 +1924,45 @@ faceBtn = T.Bang:ColorToggle("BANG FACE", function(state)
 	end
 end)
 
-local _, setBangSpeed = T.Bang:Slider("speed bang", 0, 100, 5, function(v) 
+local _, setBangSpeed = T.Bang:Slider("speed bang", 0.1, 5, 0.8, function(v) 
 	bangSpeed = v 
 	if bangAnimTrack and bangOn then bangAnimTrack:AdjustSpeed(v) end
-end)
-local _, setFaceSpeed = T.Bang:Slider("speed face bang", 0, 100, 5, function(v) 
+end, 0.1)
+local _, setFaceSpeed = T.Bang:Slider("speed face bang", 0.1, 5, 0.8, function(v) 
 	faceSpeed = v 
 	if bangAnimTrack and faceOn then bangAnimTrack:AdjustSpeed(v) end
-end)
+end, 0.1)
 
 T.Bang:SmallButton("reset", Color3.fromRGB(225, 50, 60), function()
-	setBangSpeed(5)
-	setFaceSpeed(5)
+	setBangSpeed(0.8)
+	setFaceSpeed(0.8)
 end)
 
-local bangAnimLoop = 0
-table.insert(conns, RunService.Heartbeat:Connect(function(dt)
+local bangCounter = 0
+table.insert(conns, RunService.Stepped:Connect(function()
 	if (bangOn or faceOn) and bangTarget and bangTarget.player and bangTarget.player.Parent then
 		local targetChar = bangTarget.player.Character
 		local myChar = LP.Character
-		local tRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+		local tRoot = targetChar and (targetChar:FindFirstChild("LowerTorso") or targetChar:FindFirstChild("HumanoidRootPart"))
 		local tHead = targetChar and targetChar:FindFirstChild("Head")
 		local mRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
 		local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
 		
 		if tRoot and mRoot and myHum then
+			bangCounter = bangCounter + 1
 			local speed = bangOn and bangSpeed or faceSpeed
-			bangAnimLoop = bangAnimLoop + (dt * (speed * 2.5))
-			local offsetZ = math.sin(bangAnimLoop) * 1.1
+			local pump = math.sin(bangCounter * speed) * 1.5
 			
-			mRoot.AssemblyLinearVelocity = Vector3.zero
-			mRoot.AssemblyAngularVelocity = Vector3.zero
+			mRoot.Velocity = Vector3.zero
+			mRoot.RotVelocity = Vector3.zero
 			
 			if bangOn then
-				-- BANG: ضبط المسافة والزاوية بدقة لتطابق وقفة VR7 الأنيقة من الخلف
-				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.05 + (offsetZ * 0.4)) * CFrame.Angles(0, 0, 0)
+				-- BANG بنفس أسلوب التثبيت والثبات الدقيق من الخلف
+				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1 + pump)
 			elseif faceOn and tHead then
-				-- FACE BANG: إحداثيات الارتفاع والمحاذاة المظبوطة
+				-- FACE BANG بنفس الأسلوب الاحترافي
 				myHum.Sit = true
-				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.55, -1.0 - (offsetZ * 0.3)) * CFrame.Angles(0, math.pi, 0)
+				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0, -1 + pump) * CFrame.Angles(0, math.rad(180), 0)
 			end
 		end
 	end
