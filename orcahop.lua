@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (رجوع أكبر للـ BANG مع إرجاع الـ FACE BANG كما كانت تماماً)
+-- BANG & FACE BANG (الـ Bang العادي بالمسافة الواسعة، والـ Face Bang بالجلوس الأصلي تماماً)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1851,30 +1851,6 @@ local bangTarget, bangAway = nil, false
 
 local bangAnimTrack = nil
 local bangSpeed, faceSpeed = 5, 5
-local originalAnimateScript = nil
-
-local function applyStance(active)
-	local character = LP.Character
-	if not character then return end
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	local animate = character:FindFirstChild("Animate")
-
-	if active then
-		if animate then
-			originalAnimateScript = animate.Disabled
-			animate.Disabled = true
-		end
-		if humanoid then
-			for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
-				track:Stop()
-			end
-		end
-	else
-		if animate and originalAnimateScript ~= nil then
-			animate.Disabled = originalAnimateScript
-		end
-	end
-end
 
 local function stopBangAnim()
 	if bangAnimTrack then
@@ -1882,7 +1858,6 @@ local function stopBangAnim()
 		bangAnimTrack:Destroy()
 		bangAnimTrack = nil
 	end
-	applyStance(false)
 	local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
 	if hum then
 		hum.Sit = false
@@ -1891,7 +1866,6 @@ end
 
 local function playBangAnim(animId)
 	stopBangAnim()
-	applyStance(true)
 	local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
 	if hum then
 		local anim = Instance.new("Animation")
@@ -1977,18 +1951,18 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 		if tRoot and mRoot and myHum then
 			local speed = bangOn and bangSpeed or faceSpeed
 			bangAnimLoop = bangAnimLoop + (dt * (speed * 2.5))
-			-- زيادة مسافة الرجوع للخلف قليلاً مع الحفاظ على الذهاب للأمام كما هي
-			local offsetZ = math.sin(bangAnimLoop) * 1.2
+			local offsetZ = math.sin(bangAnimLoop) * 1.1
 			
 			mRoot.AssemblyLinearVelocity = Vector3.zero
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.2 + offsetZ) * CFrame.Angles(0, 0, 0)
+				-- الـ Bang العادي بالمسافة الواسعة التي أردتها
+				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ) * CFrame.Angles(0, 0, 0)
 			elseif faceOn and tHead then
+				-- الـ Face Bang بالجلوس والوضعية القديمة الأصلية تماماً
 				myHum.Sit = true
-				-- إرجاع FACE BANG لسلوكها الأصلي (تجلس وتسوي بانج بدون تعديلات تقييدية)
-				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.55, -1.0 + (offsetZ * 0.5)) * CFrame.Angles(0, math.pi, 0)
+				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0, -1) * CFrame.Angles(0, 0, 0)
 			end
 		end
 	end
