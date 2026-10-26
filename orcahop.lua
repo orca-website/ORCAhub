@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (تم تعديل الـ Bang العادي ليلحق الظهر تماماً كالـ Face Bang)
+-- BANG & BANG FACE (محدث تماماً للتعقب الدقيق)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1989,7 +1989,6 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyLinearVelocity = Vector3.zero
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
-			-- استخدام Head أو جزء أساسي ديناميكي للـ Bang ليلحق الظهر تماماً حتى لو كان يرقص أو نايم
 			if bangOn then
 				local targetPart = targetChar:FindFirstChild("UpperTorso") or targetChar:FindFirstChild("Torso") or tRoot
 				mRoot.CFrame = targetPart.CFrame * CFrame.new(0, 0, 1.1 + offsetZ)
@@ -2016,7 +2015,7 @@ table.insert(conns, Players.PlayerAdded:Connect(function(p)
 end))
 
 ------------------------------------------------------------------
--- SMLA tab (player tracker)
+-- SMLA tab (player tracker - التعديلات مطبقة)
 ------------------------------------------------------------------
 local GREEN = Color3.fromRGB(46, 200, 110)
 local RED = Color3.fromRGB(235, 60, 70)
@@ -2051,14 +2050,15 @@ local smlaPicker = T.Smla:PlayerPicker()
 local tracked = {}
 
 local function stayOf(e)
-	return e.acc + (e.present and (os.clock() - e.since) or 0)
+	return e.acc + (e.present and (os.clock() - e.since) / 0)
 end
 
 local function refreshEntry(e)
 	e.joinL.Text = "Joined: " .. e.joined
 	e.leftL.Text = "Left: " .. e.left
-	e.statusL.Text = e.present and "IN SERVER" or "LEFT"
+	e.statusL.Text = e.present and "online" or "offline"
 	e.statusL.TextColor3 = e.present and GREEN or RED
+	e.dot.BackgroundColor3 = e.present and GREEN or RED
 	e.timeL.TextColor3 = e.present and GREEN or RED
 end
 
@@ -2078,13 +2078,19 @@ local function addTracked(p)
 	Label({Text = "@" .. p.Name, TextSize = 11, TextColor3 = C.sub, Size = UDim2.new(1, -232, 0, 16),
 		Position = UDim2.fromOffset(74, 31), TextTruncate = Enum.TextTruncate.AtEnd, Parent = card})
 
+	local isInServer = Players:FindFirstChild(p.Name) ~= nil
+
 	local e = {
-		name = p.Name, present = true, joined = 1, left = 0, acc = 0, since = os.clock(), card = card,
+		name = p.Name, present = isInServer, joined = 0, left = 0, acc = 0, since = os.clock(), card = card,
 	}
 	e.timeL = Label({Text = "+ 00:00:00", Font = Enum.Font.GothamBlack, TextSize = 14, TextXAlignment = Enum.TextXAlignment.Right,
 		Size = UDim2.fromOffset(100, 18), Position = UDim2.new(1, -152, 0, 12), Parent = card})
-	e.statusL = Label({Text = "IN SERVER", Font = Enum.Font.GothamBold, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Right,
-		Size = UDim2.new(1, -152, 0, 32), Parent = card})
+	
+	e.dot = New("Frame", {Size = UDim2.fromOffset(18, 18), Position = UDim2.new(1, -70, 0, 34), BackgroundColor3 = GREEN, Parent = card})
+	Corner(e.dot, 9)
+	e.statusL = Label({Text = "online", Font = Enum.Font.GothamBold, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Right,
+		Size = UDim2.new(1, -152, 0, 14), Position = UDim2.new(1, -152, 0, 55), Parent = card})
+
 	e.joinL = Label({Text = "", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = GREEN,
 		Size = UDim2.new(1, -84, 0, 16), Position = UDim2.fromOffset(74, 64), Parent = card})
 	e.leftL = Label({Text = "", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = RED,
@@ -2268,14 +2274,17 @@ do
 	local dragging, dStart, sPos
 	TopBar.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-			dragging, dStart, sPos = true, i.Position, Main.Position
+			dragging, dStart, sPos = true, false, i.Position, Main.Position
 			i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then dragging = false end end)
 		end
 	end)
 	table.insert(conns, UIS.InputChanged:Connect(function(i)
 		if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
 			local d = i.Position - dStart
-			Main.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + d.X, sPos.Y.Scale, sPos.Y.Offset + d.Y)
+			if d.Magnitude > 6 then moved = true end
+			if moved then
+				Orb.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + d.X, sPos.Y.Scale, sPos.Y.Offset + d.Y)
+			end
 		end
 	end))
 end
