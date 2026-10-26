@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (عدل هنا فقط لـ Face Bang ليجلس اللاعب)
+-- BANG & BANG FACE (تم فصل الـ Stance عن Face Bang ليعمل الجلوس بشكل صحيح)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1882,18 +1882,29 @@ local function stopBangAnim()
 		bangAnimTrack:Destroy()
 		bangAnimTrack = nil
 	end
-	applyStance(false)
+	-- نقوم بإرجاع الـ Stance فقط لو كان BANG العادي هو اللي شغال
+	if bangOn then
+		applyStance(false)
+	end
 	local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
 	if hum then
 		hum.Sit = false
 	end
 end
 
-local function playBangAnim(animId)
+local function playBangAnim(animId, isFaceBang)
 	stopBangAnim()
-	applyStance(true)
+	
+	-- الـ Stance يتفعل فقط لـ BANG العادي، ولا يلمس الـ Face Bang أبداً لتظل في وضعية الجلوس
+	if not isFaceBang then
+		applyStance(true)
+	end
+
 	local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
 	if hum then
+		if isFaceBang then
+			hum.Sit = true
+		end
 		local anim = Instance.new("Animation")
 		anim.AnimationId = "rbxassetid://" .. tostring(animId)
 		bangAnimTrack = hum:LoadAnimation(anim)
@@ -1917,7 +1928,7 @@ bangBtn = T.Bang:ColorToggle("BANG", function(state)
 			return
 		end
 		bangTarget, bangAway = {id = p.UserId, name = p.Name, player = p}, false
-		playBangAnim(148840371)
+		playBangAnim(148840371, false)
 		Notify("BANG Activated  " .. p.Name, "", C.mars, "user")
 	else
 		stopBangAnim()
@@ -1941,11 +1952,8 @@ faceBtn = T.Bang:ColorToggle("BANG FACE", function(state)
 		end
 		bangTarget, bangAway = {id = p.UserId, name = p.Name, player = p}, false
 		
-		-- جعل اللاعب يجلس تماماً عند تفعيل Face Bang
-		local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-		if hum then hum.Sit = true end
-
-		playBangAnim(148840371)
+		-- تشغيل الـ Face Bang مع الجلوس فوراً
+		playBangAnim(148840371, true)
 		Notify("BANG FACE Activated  " .. p.Name, "", C.mars, "user")
 	else
 		stopBangAnim()
@@ -1988,7 +1996,6 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			if bangOn then
 				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.1 + offsetZ) * CFrame.Angles(0, 0, 0)
 			elseif faceOn and tHead then
-				-- الحفاظ على الجلوس وجعل Face Bang تتم أثناء الجلوس تماماً
 				myHum.Sit = true
 				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.5, -0.9 + (offsetZ * 0.5)) * CFrame.Angles(0, math.pi, 0)
 			end
