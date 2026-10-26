@@ -1842,7 +1842,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (مع تقليل مسافة الحركة الأمامية قليلاً لتلامس الظهر تماماً)
+-- BANG & BANG FACE (رجوع أكبر للـ BANG مع إرجاع الـ FACE BANG كما كانت تماماً)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1977,17 +1977,18 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 		if tRoot and mRoot and myHum then
 			local speed = bangOn and bangSpeed or faceSpeed
 			bangAnimLoop = bangAnimLoop + (dt * (speed * 2.5))
-			-- تقليل نطاق الحركة الأمامية قليلاً ليلامس الظهر بضبط تام ودون اندماج كامل
-			local offsetZ = math.sin(bangAnimLoop) * 0.55
+			-- زيادة مسافة الرجوع للخلف قليلاً مع الحفاظ على الذهاب للأمام كما هي
+			local offsetZ = math.sin(bangAnimLoop) * 1.2
 			
 			mRoot.AssemblyLinearVelocity = Vector3.zero
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 0.95 + offsetZ) * CFrame.Angles(0, 0, 0)
+				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.2 + offsetZ) * CFrame.Angles(0, 0, 0)
 			elseif faceOn and tHead then
 				myHum.Sit = true
-				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.55, -0.9 - (offsetZ * 0.3)) * CFrame.Angles(0, math.pi, 0)
+				-- إرجاع FACE BANG لسلوكها الأصلي (تجلس وتسوي بانج بدون تعديلات تقييدية)
+				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.55, -1.0 + (offsetZ * 0.5)) * CFrame.Angles(0, math.pi, 0)
 			end
 		end
 	end
