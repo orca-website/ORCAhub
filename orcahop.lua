@@ -1,8 +1,4 @@
---[[
-    uiogunio / orca  «broockhaven»
-    Custom UI (no external library) - Mars theme
-    تحديث: زر ORCA الجديد (صورة + حلقات برتقالية + كلمة ORCA)
-]]
+--[[ script orca / uiogunio  broockhaven🏡RB ]]
 
 local Players      = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
