@@ -1,8 +1,4 @@
---[[
-    uiogunio / orca  «broockhaven»
-    Custom UI (no external library) - Mars theme
-    تحديث: زر ORCA الجديد + حفظ موضع التمرير في القوائم
-]]
+--[[ script orca / uiogunio  broockhaven🏡RB ]]
 
 local Players      = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -377,7 +373,7 @@ local Content = New("Frame", {
 Corner(Content, 12)
 
 ------------------------------------------------------------------
--- Tab system (محدث: حفظ موقع التمرير عند الإغلاق والفتح)
+-- Tab system (محدث: حفظ مكان التمرير)
 ------------------------------------------------------------------
 local allTabs = {}
 local tabOrder = 0
@@ -1870,7 +1866,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE
+-- BANG & BANG FACE (محدث: إصلاح مدى الحركة الخلفية والتقدم للأمام حسب الـ Size)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1879,7 +1875,7 @@ local bangTarget, bangAway = nil, false
 
 local bangAnimTrack = nil
 local bangSpeed, faceSpeed = 5, 5
-local bangSize, faceSize = 4, 4
+local bangSize, faceSize = 4, 4 -- القيمة الافتراضية 4 لكليهما
 local originalAnimateScript = nil
 
 local function applyStance(active)
@@ -2311,7 +2307,7 @@ do
 	local dragging, dStart, sPos
 	TopBar.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-			dragging, dStart, sPos = true, i.Position, Main.Position
+			dragging, dStart, sPos = true, false, i.Position, Main.Position
 			i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then dragging = false end end)
 		end
 	end)
@@ -2324,13 +2320,13 @@ do
 end
 
 ------------------------------------------------------------------
--- ORCA button (صورة + حلقات برتقالية + كلمة ORCA)
+-- ORCA button (صورة + حلقات برتقالية + كلمة ORCA)  <<< الزر الجديد
 ------------------------------------------------------------------
 local Orb, OrbScale
 do
-	local IMAGE_ID     = 118123159790059
-	local BUTTON_SCALE = 0.55
-	local TEXT_CYCLE   = 3
+	local IMAGE_ID     = 118123159790059  -- ID ديال الصورة (غيره لو تبي صورة ثانية)
+	local BUTTON_SCALE = 0.55             -- حجم الزر (0.5 صغير / 0.8 كبير)
+	local TEXT_CYCLE   = 3                -- كل شحال ثانية تعاود كلمة ORCA
 	local FILL_MODE    = Enum.ScaleType.Stretch
 	local IMAGE        = "rbxassetid://" .. IMAGE_ID
 
@@ -2408,6 +2404,7 @@ do
 		end
 	end)
 
+	-- سحب الزر + ضغطة = فتح/غلق السكربت
 	local dragging, moved, dStart, sPos = false, false, nil, nil
 	Btn.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
@@ -2433,6 +2430,7 @@ do
 	Btn.MouseEnter:Connect(function() Tw(Btn, 0.2, {Size = UDim2.fromOffset(98, 98)}, Enum.EasingStyle.Back) end)
 	Btn.MouseLeave:Connect(function() Tw(Btn, 0.2, {Size = UDim2.fromOffset(92, 92)}, Enum.EasingStyle.Back) end)
 
+	-- أنيميشن الحلقات والتوهج والنقط
 	table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 		local t = os.clock()
 
@@ -2462,6 +2460,7 @@ end
 
 if currentTab then SelectTab(currentTab) else SelectTab(T.Owners) end
 
+-- ظهور الزر بأنيميشن (من صفر لحجمه)
 do
 	local target = OrbScale.Scale
 	OrbScale.Scale = 0
