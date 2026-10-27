@@ -71,6 +71,19 @@ Env.OrcaState = Env.OrcaState or {}
 local State = Env.OrcaState
 State.scroll = State.scroll or {}
 
+-- وقت آخر ضغطة (تستخدمها حماية السكرول عشان الصفحة ما ترجع لفوق لما تضغط زر)
+local lastTap = 0
+table.insert(conns, UIS.InputBegan:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+		lastTap = os.clock()
+	end
+end))
+table.insert(conns, UIS.InputEnded:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+		lastTap = os.clock()
+	end
+end))
+
 ------------------------------------------------------------------
 -- Drawn icons (built from shapes, no emojis)
 ------------------------------------------------------------------
@@ -466,8 +479,27 @@ local function CreateTab(name, icon)
 
 	tab.btn, tab.bar, tab.page, tab.icon, tab.label = btn, bar, page, tabIcon, tabLabel
 	tab.name = name
+	local lastY, lastT, guarding = 0, 0, false
 	page:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-		if tab.ready then State.scroll[name] = page.CanvasPosition.Y end
+		if guarding then return end
+		local y, now = page.CanvasPosition.Y, os.clock()
+		-- الصفحة كانت واقفة وقفزت فجأة لفوق بعد ضغطة = ارجعها لمكانها
+		if tab.ready and lastY > 40 and y < 1 and (now - lastT) > 0.08 and (now - lastTap) < 2 then
+			guarding = true
+			local target = lastY
+			task.spawn(function()
+				for _ = 1, 12 do
+					page.CanvasPosition = Vector2.new(0, target)
+					task.wait(0.05)
+					if math.abs(page.CanvasPosition.Y - target) < 2 then break end
+				end
+				lastY, lastT = page.CanvasPosition.Y, os.clock()
+				guarding = false
+			end)
+			return
+		end
+		lastY, lastT = y, now
+		if tab.ready then State.scroll[name] = y end
 	end)
 	table.insert(allTabs, tab)
 	btn.MouseButton1Click:Connect(function() SelectTab(tab) end)
