@@ -2383,56 +2383,27 @@ end
 
 local function OpenMain()
 	isOpen = true
-	-- حفظ/استرجاع مكان السكرول (داخل pcall عشان أي خطأ فيه ما يمنع فتح النافذة)
 	pcall(function() Mem.S.open = true end)
-	Mem.ready = false
+	-- النافذة ما تتصغر أبداً (بس إظهار/إخفاء مثل المكتبة) فالسكرول يبقى مكانه بدون أي رجوع للأول
 	local function applyAll()
 		for _, tb in ipairs(allTabs) do
 			local v = Mem.S.raw[tb.name]
-			if v and v > 0 then tb.page.CanvasPosition = Vector2.new(0, v) end
+			if v and v > 0 and math.abs(tb.page.CanvasPosition.Y - v) > 1 then
+				tb.page.CanvasPosition = Vector2.new(0, v)
+			end
 		end
 		local sf = Mem.S.sideraw
-		if sf and sf > 0 then Sidebar.CanvasPosition = Vector2.new(0, sf) end
+		if sf and sf > 0 and math.abs(Sidebar.CanvasPosition.Y - sf) > 1 then
+			Sidebar.CanvasPosition = Vector2.new(0, sf)
+		end
 	end
-	-- نجهز النافذة بحجمها الكامل خارج الشاشة، نحط السكرول في مكانه، وبعدها نبدأ الأنيميشن (ما يبان أي رجوع للأول)
-	local keepPos = Main.Position
-	Main.Position = UDim2.fromScale(10, 10)
 	MainScale.Scale = baseScale()
+	pcall(applyAll)      -- قبل ما تظهر النافذة
 	Main.Visible = true
-	for _ = 1, 3 do
-		pcall(applyAll)
-		RunService.RenderStepped:Wait()
-	end
-	pcall(applyAll)
-	Main.Position = keepPos
-	if not isOpen then
-		Main.Visible = false
-		return
-	end
-	MainScale.Scale = 0.01
-	Tw(MainScale, 0.45, {Scale = baseScale()}, Enum.EasingStyle.Back)
-	-- نثبت المكان المحفوظ كل فريم لين تكمل الأنيميشن (لأن النافذة وهي صغيرة السكرول يتصفر)
-	do
-		local t0 = os.clock()
-		local rc
-		rc = RunService.RenderStepped:Connect(function()
-			if not isOpen or os.clock() - t0 > 0.6 then rc:Disconnect() return end
-			pcall(applyAll)
-		end)
-	end
-	task.delay(0.62, function()
-		if not isOpen then return end
-		Mem.ready = true
-		pcall(function()
-			local cur = Mem.cur
-			if cur then
-				local fr = Mem.S.raw[cur.name]
-				if fr and fr > 0 then Mem.set(cur.page, fr) end
-				cur.ready = true
-			end
-			local sf = Mem.S.sideraw
-			if sf and sf > 0 then Mem.set(Sidebar, sf) end
-		end)
+	Mem.ready = true
+	pcall(function()
+		local cur = Mem.cur
+		if cur then cur.ready = true end
 	end)
 end
 local function CloseMain()
@@ -2440,8 +2411,7 @@ local function CloseMain()
 	Mem.ready = false
 	isOpen = false
 	pcall(function() Mem.S.open = false end)
-	local tw = Tw(MainScale, 0.25, {Scale = 0.01}, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-	tw.Completed:Connect(function() if not isOpen then Main.Visible = false end end)
+	Main.Visible = false
 end
 local function ToggleMain() if isOpen then CloseMain() else OpenMain() end end
 CloseBtn.MouseButton1Click:Connect(CloseMain)
