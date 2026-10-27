@@ -311,14 +311,6 @@ local Main = New("Frame", {
 })
 Corner(Main, 16)
 local MainScale = New("UIScale", {Scale = 0, Parent = Main})
-if Mem.S.mainPos then
-	local m = Mem.S.mainPos
-	Main.Position = UDim2.new(m[1], m[2], m[3], m[4])
-end
-Main:GetPropertyChangedSignal("Position"):Connect(function()
-	local p = Main.Position
-	Mem.S.mainPos = {p.X.Scale, p.X.Offset, p.Y.Scale, p.Y.Offset}
-end)
 local isOpen = false
 New("UIGradient", {
 	Color = ColorSequence.new(Color3.fromRGB(24, 11, 15), Color3.fromRGB(10, 8, 20)),
@@ -2391,30 +2383,32 @@ end
 
 local function OpenMain()
 	isOpen = true
-	Mem.S.open = true
 	Main.Visible = true
 	MainScale.Scale = 0.01
-	Mem.ready = false
 	Tw(MainScale, 0.45, {Scale = baseScale()}, Enum.EasingStyle.Back)
-	-- بعد ما تنفتح النافذة بالكامل رجّع السكرول لمكانه (كان يضيع وهي تنفتح/تنقفل)
+	-- حفظ/استرجاع مكان السكرول (داخل pcall عشان أي خطأ فيه ما يمنع فتح النافذة)
+	pcall(function() Mem.S.open = true end)
+	Mem.ready = false
 	task.delay(0.62, function()
 		if not isOpen then return end
 		Mem.ready = true
-		local cur = Mem.cur
-		if cur then
-			local fr = Mem.S.raw[cur.name]
-			if fr and fr > 0 then Mem.set(cur.page, fr) end
-			cur.ready = true
-		end
-		local sf = Mem.S.sideraw
-		if sf and sf > 0 then Mem.set(Sidebar, sf) end
+		pcall(function()
+			local cur = Mem.cur
+			if cur then
+				local fr = Mem.S.raw[cur.name]
+				if fr and fr > 0 then Mem.set(cur.page, fr) end
+				cur.ready = true
+			end
+			local sf = Mem.S.sideraw
+			if sf and sf > 0 then Mem.set(Sidebar, sf) end
+		end)
 	end)
 end
 local function CloseMain()
-	Mem.snap()
+	pcall(Mem.snap)
 	Mem.ready = false
 	isOpen = false
-	Mem.S.open = false
+	pcall(function() Mem.S.open = false end)
 	local tw = Tw(MainScale, 0.25, {Scale = 0.01}, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 	tw.Completed:Connect(function() if not isOpen then Main.Visible = false end end)
 end
@@ -2425,7 +2419,7 @@ do
 	local dragging, dStart, sPos
 	TopBar.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-			dragging, dStart, sPos = true, false, i.Position, Main.Position
+			dragging, dStart, sPos = true, i.Position, Main.Position
 			i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then dragging = false end end)
 		end
 	end)
@@ -2462,14 +2456,6 @@ do
 		BackgroundTransparency = 1, Parent = Gui,
 	})
 	Mem.orbScale = New("UIScale", {Scale = BUTTON_SCALE, Parent = Orb})
-	if Mem.S.orbPos then
-		local o = Mem.S.orbPos
-		Orb.Position = UDim2.new(o[1], o[2], o[3], o[4])
-	end
-	Orb:GetPropertyChangedSignal("Position"):Connect(function()
-		local p = Orb.Position
-		Mem.S.orbPos = {p.X.Scale, p.X.Offset, p.Y.Scale, p.Y.Offset}
-	end)
 
 	local rings = {
 		{size = 118, rot = 0,  sp = 30,  th = 2.4, rad = 30, g = 120},
@@ -2531,25 +2517,31 @@ do
 	end)
 
 	-- سحب الزر + ضغطة = فتح/غلق السكربت
-	local dragging, moved, dStart, sPos = false, false, nil, nil
+	local dragging, moved, dStart, sPos, dInput = false, false, nil, nil, nil
 	Btn.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-			dragging, moved, dStart, sPos = true, false, i.Position, Orb.Position
-			i.Changed:Connect(function()
-				if i.UserInputState == Enum.UserInputState.End then
-					dragging = false
-					if not moved then ToggleMain() end
-				end
-			end)
+			dragging, moved, dStart, sPos, dInput = true, false, i.Position, Orb.Position, i
 		end
 	end)
 	table.insert(conns, UIS.InputChanged:Connect(function(i)
-		if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+		if not dragging then return end
+		local okType = i.UserInputType == Enum.UserInputType.MouseMovement
+			or (i.UserInputType == Enum.UserInputType.Touch and i == dInput)
+		if okType then
 			local d = i.Position - dStart
-			if d.Magnitude > 6 then moved = true end
+			if d.Magnitude > 14 then moved = true end
 			if moved then
 				Orb.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + d.X, sPos.Y.Scale, sPos.Y.Offset + d.Y)
 			end
+		end
+	end))
+	table.insert(conns, UIS.InputEnded:Connect(function(i)
+		if not dragging then return end
+		local ended = (i.UserInputType == Enum.UserInputType.MouseButton1 and dInput.UserInputType == Enum.UserInputType.MouseButton1)
+			or (i.UserInputType == Enum.UserInputType.Touch and i == dInput)
+		if ended then
+			dragging = false
+			if not moved then ToggleMain() end
 		end
 	end))
 
