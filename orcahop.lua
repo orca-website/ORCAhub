@@ -1876,7 +1876,7 @@ local bangTarget, bangAway = nil, false
 
 local bangAnimTrack = nil
 local bangSpeed, faceSpeed = 5, 5
-local bangSize, faceSize = 3, 3 -- القيم الافتراضية 3
+local bangSize, faceSize = 3, 4 -- القيمة الافتراضية للبانج 3 والبانج فيس 4
 local originalAnimateScript = nil
 
 local function applyStance(active)
@@ -1983,6 +1983,9 @@ faceBtn = T.Bang:ColorToggle("BANG FACE", function(state)
 	end
 end)
 
+-- فاصل صغير مكتوب تحته speed فوق خطين السرعة
+T.Bang:Header("speed", true)
+
 local _, setBangSpeed = T.Bang:Slider("speed bang", 0, 300, 5, function(v) 
 	bangSpeed = v 
 	if bangAnimTrack and bangOn then bangAnimTrack:AdjustSpeed(v) end
@@ -1992,13 +1995,13 @@ local _, setFaceSpeed = T.Bang:Slider("speed face bang", 0, 300, 5, function(v)
 	if bangAnimTrack and faceOn then bangAnimTrack:AdjustSpeed(v) end
 end)
 
--- فاصل صغير مكتوب تحته size
+-- فاصل صغير مكتوب تحته size فوق خطين الحجم (من 1 إلى 30)
 T.Bang:Header("size", true)
 
-local _, setBangSizeVal = T.Bang:Slider("size bang", 1, 10, 3, function(v)
+local _, setBangSizeVal = T.Bang:Slider("size bang", 1, 30, 3, function(v)
 	bangSize = v
 end)
-local _, setFaceSizeVal = T.Bang:Slider("size face bang", 1, 10, 3, function(v)
+local _, setFaceSizeVal = T.Bang:Slider("size face bang", 1, 30, 4, function(v)
 	faceSize = v
 end)
 
@@ -2006,7 +2009,7 @@ T.Bang:SmallButton("reset", Color3.fromRGB(225, 50, 60), function()
 	setBangSpeed(5)
 	setFaceSpeed(5)
 	setBangSizeVal(3)
-	setFaceSizeVal(3)
+	setFaceSizeVal(4)
 end)
 
 local bangAnimLoop = 0
@@ -2027,13 +2030,17 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				local offsetZ = math.sin(bangAnimLoop) * (bangSize * 0.45)
+				local rawSine = math.sin(bangAnimLoop)
+				-- الحركة للأمام طبيعية، والتراجع للخلف يتحكم به سلايدر size bang بمجال (1 إلى 30)
+				local offsetZ = rawSine > 0 and (rawSine * 0.8) or (rawSine * (bangSize * 0.35))
 				local targetPart = targetChar:FindFirstChild("UpperTorso") or targetChar:FindFirstChild("Torso") or tRoot
-				mRoot.CFrame = targetPart.CFrame * CFrame.new(0, 0, 1.3 + offsetZ)
+				mRoot.CFrame = targetPart.CFrame * CFrame.new(0, 0, 0.8 + offsetZ)
 			elseif faceOn and tHead then
-				local offsetZ = math.sin(bangAnimLoop) * (faceSize * 0.28)
+				local rawSine = math.sin(bangAnimLoop)
+				-- الوجه للأمام طبيعي، والتراجع للخلف يتحكم به سلايدر size face bang بمجال (1 إلى 30)
+				local offsetZ = rawSine > 0 and (rawSine * 0.4) or (rawSine * (faceSize * 0.22))
 				myHum.Sit = true
-				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.5, -0.9 + offsetZ) * CFrame.Angles(0, math.pi, 0)
+				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.5, -0.6 + offsetZ) * CFrame.Angles(0, math.pi, 0)
 			end
 		end
 	end
