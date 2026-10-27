@@ -70,7 +70,20 @@ local Env = (getgenv and getgenv()) or _G
 Env.OrcaState = Env.OrcaState or {}
 local State = Env.OrcaState
 State.scroll = State.scroll or {}
+State.frac = State.frac or {} -- مكان السكرول كنسبة (0 = فوق، 1 = تحت) عشان ما تتأثر بحجم النافذة
 local uiReady = false -- true = النافذة مفتوحة بالكامل (بس وقتها نحفظ مكان السكرول)
+
+local function maxScroll(f) return f.AbsoluteCanvasSize.Y - f.AbsoluteWindowSize.Y end
+-- مكان السكرول كنسبة من 0 لـ 1 (nil لو الأحجام لسا ما انحسبت)
+local function getFrac(f)
+	local m = maxScroll(f)
+	if m > 1 then return math.clamp(f.CanvasPosition.Y / m, 0, 1) end
+	return nil
+end
+local function applyFrac(f, fr)
+	local m = maxScroll(f)
+	if fr and m > 1 then f.CanvasPosition = Vector2.new(0, fr * m) end
+end
 
 -- وقت آخر ضغطة (تستخدمها حماية السكرول عشان الصفحة ما ترجع لفوق لما تضغط زر)
 local lastTap = 0
@@ -394,7 +407,10 @@ local Sidebar = New("ScrollingFrame", {
 })
 Corner(Sidebar, 12)
 Sidebar:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-	if uiReady then State.side = Sidebar.CanvasPosition.Y end
+	if uiReady then
+		local fr = getFrac(Sidebar)
+		if fr then State.sidef = fr end
+	end
 end)
 
 local Content = New("Frame", {
@@ -411,15 +427,12 @@ local tabOrder = 0
 local currentTab
 
 -- يحط السكرول في مكانه (ينتظر لين النافذة تنفتح وتتحسب أحجامها)
-local function setScroll(frame, y)
+local function setScroll(frame, fr)
 	for _ = 1, 100 do
-		if uiReady then
-			frame.CanvasPosition = Vector2.new(0, y)
+		if uiReady and maxScroll(frame) > 1 then
+			applyFrac(frame, fr)
 			task.wait(0.05)
-			local maxY = frame.AbsoluteCanvasSize.Y - frame.AbsoluteWindowSize.Y
-			if math.abs(frame.CanvasPosition.Y - y) < 2 or (maxY > 1 and frame.CanvasPosition.Y >= maxY - 2) then
-				return true
-			end
+			if math.abs(frame.CanvasPosition.Y - fr * maxScroll(frame)) < 3 then return true end
 		else
 			task.wait(0.1)
 		end
@@ -431,9 +444,13 @@ end
 local function snapshotScroll()
 	if not uiReady then return end
 	for _, t in ipairs(allTabs) do
-		if t.ready then State.scroll[t.name] = t.page.CanvasPosition.Y end
+		if t.ready then
+			local fr = getFrac(t.page)
+			if fr then State.frac[t.name] = fr end
+		end
 	end
-	State.side = Sidebar.CanvasPosition.Y
+	local sf = getFrac(Sidebar)
+	if sf then State.sidef = sf end
 end
 Gui.Destroying:Connect(function()
 	snapshotScroll()
@@ -453,19 +470,20 @@ local function SelectTab(t)
 	currentTab = t
 	if not t.restored then
 		t.restored = true
-		local y = State.scroll[t.name]
-		if y and y > 0 then
+		local fr = State.frac[t.name]
+		if fr and fr > 0 then
 			task.spawn(function()
-				setScroll(t.page, y)
+				setScroll(t.page, fr)
 				t.ready = true
 			end)
 		else
 			t.ready = true
 		end
 	elseif t.ready and uiReady then
-		local y = State.scroll[t.name]
-		if y and y > 0 and math.abs(t.page.CanvasPosition.Y - y) > 2 then
-			task.spawn(function() setScroll(t.page, y) end)
+		local fr = State.frac[t.name]
+		local cur = getFrac(t.page)
+		if fr and cur and math.abs(cur - fr) > 0.01 then
+			task.spawn(function() setScroll(t.page, fr) end)
 		end
 	end
 	t.page.Position = UDim2.fromOffset(0, 14)
@@ -521,7 +539,10 @@ local function CreateTab(name, icon)
 			return
 		end
 		lastY, lastT = y, now
-		if tab.ready then State.scroll[name] = y end
+		if tab.ready then
+			local fr = getFrac(page)
+			if fr then State.frac[name] = fr end
+		end
 	end)
 	table.insert(allTabs, tab)
 	btn.MouseButton1Click:Connect(function() SelectTab(tab) end)
@@ -2410,9 +2431,8 @@ local function holdScroll(dur)
 	conn = RunService.RenderStepped:Connect(function()
 		if os.clock() - t0 > dur or not Gui.Parent then conn:Disconnect() return end
 		local cur = currentTab
-		local y = cur and State.scroll[cur.name]
-		if y and y > 0 then cur.page.CanvasPosition = Vector2.new(0, y) end
-		if State.side and State.side > 0 then Sidebar.CanvasPosition = Vector2.new(0, State.side) end
+		if cur then applyFrac(cur.page, State.frac[cur.name]) end
+		applyFrac(Sidebar, State.sidef)
 	end)
 end
 
@@ -2430,12 +2450,12 @@ local function OpenMain()
 		uiReady = true
 		local cur = currentTab
 		if cur then
-			local y = State.scroll[cur.name]
-			if y and y > 0 then setScroll(cur.page, y) end
+			local fr = State.frac[cur.name]
+			if fr and fr > 0 then setScroll(cur.page, fr) end
 			cur.ready = true
 		end
-		local sy = State.side
-		if sy and sy > 0 then setScroll(Sidebar, sy) end
+		local sf = State.sidef
+		if sf and sf > 0 then setScroll(Sidebar, sf) end
 	end)
 end
 local function CloseMain()
