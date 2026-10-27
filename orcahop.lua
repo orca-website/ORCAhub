@@ -1867,7 +1867,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE
+-- BANG & BANG FACE (معدل بالكامل ليعمل بشكل مثالي عند ملامسة الظهر والارتداد للخلف)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1876,7 +1876,7 @@ local bangTarget, bangAway = nil, false
 
 local bangAnimTrack = nil
 local bangSpeed, faceSpeed = 5, 5
-local bangSize, faceSize = 3, 4 -- القيم الافتراضية المناسبة للبانج والبانج فيس
+local bangSize, faceSize = 3, 3 
 local originalAnimateScript = nil
 
 local function applyStance(active)
@@ -1969,7 +1969,7 @@ faceBtn = T.Bang:ColorToggle("BANG FACE", function(state)
 		local p = bangPicker.Get()
 		if not p or not p.Parent then
 			faceOn = false
-			if faceBtn then faceBtn.Set(false)
+			if faceBtn then faceBtn.Set(false) end
 			Notify("BANG FACE", "Select a player first", C.mars2, "warn")
 			return
 		end
@@ -1983,9 +1983,6 @@ faceBtn = T.Bang:ColorToggle("BANG FACE", function(state)
 	end
 end)
 
--- فاصل صغير مكتوب تحته speed فوق خطين السرعة
-T.Bang:Header("speed", true)
-
 local _, setBangSpeed = T.Bang:Slider("speed bang", 0, 300, 5, function(v) 
 	bangSpeed = v 
 	if bangAnimTrack and bangOn then bangAnimTrack:AdjustSpeed(v) end
@@ -1995,13 +1992,12 @@ local _, setFaceSpeed = T.Bang:Slider("speed face bang", 0, 300, 5, function(v)
 	if bangAnimTrack and faceOn then bangAnimTrack:AdjustSpeed(v) end
 end)
 
--- فاصل صغير مكتوب تحته size فوق خطين الحجم (من 1 إلى 30)
 T.Bang:Header("size", true)
 
-local _, setBangSizeVal = T.Bang:Slider("size bang", 1, 30, 3, function(v)
+local _, setBangSizeVal = T.Bang:Slider("size bang", 1, 10, 3, function(v)
 	bangSize = v
 end)
-local _, setFaceSizeVal = T.Bang:Slider("size face bang", 1, 30, 4, function(v)
+local _, setFaceSizeVal = T.Bang:Slider("size face bang", 1, 10, 3, function(v)
 	faceSize = v
 end)
 
@@ -2009,7 +2005,7 @@ T.Bang:SmallButton("reset", Color3.fromRGB(225, 50, 60), function()
 	setBangSpeed(5)
 	setFaceSpeed(5)
 	setBangSizeVal(3)
-	setFaceSizeVal(4)
+	setFaceSizeVal(3)
 end)
 
 local bangAnimLoop = 0
@@ -2030,17 +2026,13 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				local rawSine = math.sin(bangAnimLoop)
-				-- الـ Bang العادي: يتقدم للأمام ويلامس الظهر تماماً ثم يتراجع للخلف بناءً على قيمة size bang
-				local offsetZ = rawSine > 0 and (rawSine * 0.45) or (rawSine * (bangSize * 0.35))
-				local targetPart = targetChar:FindFirstChild("UpperTorso") or targetChar:FindFirstChild("Torso") or tRoot
-				mRoot.CFrame = targetPart.CFrame * CFrame.new(0, 0, 0.8 + offsetZ)
+				-- التعديل هنا: الارتداد للخلف والالتصاق المثالي بظهر اللاعب واتجاهه
+				local offsetZ = math.sin(bangAnimLoop) * (bangSize * 0.35)
+				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, (bangSize * 0.45) + offsetZ) * CFrame.Angles(0, 0, 0)
 			elseif faceOn and tHead then
-				local rawSine = math.sin(bangAnimLoop)
-				-- الـ Face Bang يعمل بحركته الأصلية المثالية دون أي تغيير
-				local offsetZ = rawSine > 0 and (rawSine * 0.4) or (rawSine * (faceSize * 0.22))
+				local offsetZ = math.sin(bangAnimLoop) * (faceSize * 0.28)
 				myHum.Sit = true
-				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.5, -0.6 + offsetZ) * CFrame.Angles(0, math.pi, 0)
+				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.5, -0.9 + offsetZ) * CFrame.Angles(0, math.pi, 0)
 			end
 		end
 	end
@@ -2132,7 +2124,7 @@ local function addTracked(p)
 	e.dot = New("Frame", {Size = UDim2.fromOffset(18, 18), Position = UDim2.new(1, -70, 0, 34), BackgroundColor3 = GREEN, Parent = card})
 	Corner(e.dot, 9)
 	e.statusL = Label({Text = "online", Font = Enum.Font.GothamBold, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Right,
-		Size = UDim2.fromOffset(100, 14), Position = UDim2.new(1, -152, 0, 55), Parent = card})
+		Size = UDim2.new(1, -152, 0, 14), Position = UDim2.new(1, -152, 0, 55), Parent = card})
 	e.joinL = Label({Text = "", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = GREEN,
 		Size = UDim2.new(1, -84, 0, 16), Position = UDim2.fromOffset(74, 64), Parent = card})
 	e.leftL = Label({Text = "", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = RED,
@@ -2455,6 +2447,6 @@ Tw(Orb, 0.6, {Size = UDim2.fromOffset(150, 150)}, Enum.EasingStyle.Back)
 Notify("uiogunio / orca", "Loaded. Tap the orca orb to open the hub.", C.mars)
 task.spawn(function()
 	task.wait(1.5)
-	SetHeadTest()
+	SetHeadText()
 	SendChat("-----------uiogunio / orca ____[on] 🏠")
 end)
