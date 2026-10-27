@@ -1,6 +1,7 @@
 --[[
     uiogunio / orca  «broockhaven»
     Custom UI (no external library) - Mars theme
+    تحديث: زر ORCA الجديد (صورة + حلقات برتقالية + كلمة ORCA)
 ]]
 
 local Players      = game:GetService("Players")
@@ -2321,73 +2322,94 @@ do
 	end))
 end
 
-local Orb = New("Frame", {
-	Name = "OrcaOrb", Size = UDim2.fromOffset(150, 150), Position = UDim2.new(0, 16, 0.35, 0),
-	BackgroundTransparency = 1, Parent = Gui,
-})
-
-local rings = {
-	{w = 124, h = 46, rot = 0,   sp = 24,  th = 2,   z = 2},
-	{w = 124, h = 46, rot = 60,  sp = -32, th = 2,   z = 2},
-	{w = 112, h = 40, rot = 120, sp = 40,  th = 1.6, z = 7},
-}
-for _, d in ipairs(rings) do
-	d.f = New("Frame", {
-		Size = UDim2.fromOffset(d.w, d.h), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundTransparency = 1, Rotation = d.rot, ZIndex = d.z, Parent = Orb,
-	})
-	Corner(d.f, d.h / 2)
-	local s = New("UIStroke", {Thickness = d.th, Color = C.white, Transparency = 0.1, Parent = d.f})
-	local g = New("UIGradient", {Color = rainbow(), Parent = s})
-	spinners[g] = 90
-end
-
-local Halo = New("Frame", {
-	Size = UDim2.fromOffset(74, 74), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
-	BackgroundTransparency = 1, ZIndex = 3, Parent = Orb,
-})
-Corner(Halo, 37)
+------------------------------------------------------------------
+-- ORCA button (صورة + حلقات برتقالية + كلمة ORCA)  <<< الزر الجديد
+------------------------------------------------------------------
+local Orb, OrbScale
 do
-	local s = New("UIStroke", {Thickness = 3, Color = C.white, Parent = Halo})
-	local g = New("UIGradient", {Color = rainbow(), Parent = s})
-	spinners[g] = -160
-end
+	local IMAGE_ID     = 118123159790059  -- ID ديال الصورة (غيره لو تبي صورة ثانية)
+	local BUTTON_SCALE = 0.55             -- حجم الزر (0.5 صغير / 0.8 كبير)
+	local TEXT_CYCLE   = 3                -- كل شحال ثانية تعاود كلمة ORCA
+	local FILL_MODE    = Enum.ScaleType.Stretch
+	local IMAGE        = "rbxassetid://" .. IMAGE_ID
 
-local Core = New("Frame", {
-	Size = UDim2.fromOffset(60, 60), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
-	BackgroundColor3 = C.white, ZIndex = 4, Parent = Orb,
-})
-Corner(Core, 30)
-New("UIGradient", {Color = ColorSequence.new(Color3.fromRGB(70, 22, 20), Color3.fromRGB(14, 8, 14)), Rotation = 50, Parent = Core})
-local CoreText = Label({
-	Text = "orca", Font = Enum.Font.GothamBlack, TextSize = 16, Size = UDim2.fromScale(1, 1),
-	TextXAlignment = Enum.TextXAlignment.Center, ZIndex = 5, Parent = Core,
-})
-hueTexts[CoreText] = 0.3
+	local function orangeSeq()
+		return ColorSequence.new({
+			ColorSequenceKeypoint.new(0,   Color3.fromRGB(255, 70, 30)),
+			ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 190, 80)),
+			ColorSequenceKeypoint.new(0.6, Color3.fromRGB(255, 98, 48)),
+			ColorSequenceKeypoint.new(1,   Color3.fromRGB(255, 70, 30)),
+		})
+	end
 
-local planets = {
-	{size = 16, rx = 60, ry = 22, sp = 1.1,  ph = 0,   tilt = -20, c0 = Color3.fromRGB(255, 150, 90),  c1 = Color3.fromRGB(120, 28, 20)},
-	{size = 9,  rx = 50, ry = 32, sp = 1.9,  ph = 2,   tilt = 35,  c0 = Color3.fromRGB(200, 180, 160), c1 = Color3.fromRGB(70, 58, 52)},
-	{size = 7,  rx = 66, ry = 16, sp = -1.4, ph = 4,   tilt = 70,  c0 = Color3.fromRGB(225, 195, 165), c1 = Color3.fromRGB(95, 72, 60)},
-	{size = 12, rx = 56, ry = 27, sp = 0.8,  ph = 3.3, tilt = -65, c0 = Color3.fromRGB(255, 195, 110), c1 = Color3.fromRGB(150, 58, 24)},
-}
-for _, p in ipairs(planets) do
-	p.f = New("Frame", {
-		Size = UDim2.fromOffset(p.size, p.size), AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundColor3 = C.white, BorderSizePixel = 0, Parent = Orb,
+	Orb = New("Frame", {
+		Name = "OrcaOrb", Size = UDim2.fromOffset(140, 175), Position = UDim2.new(0, 20, 0.4, 0),
+		BackgroundTransparency = 1, Parent = Gui,
 	})
-	Corner(p.f, 20)
-	New("UIGradient", {Color = ColorSequence.new(p.c0, p.c1), Rotation = 45, Parent = p.f})
-	New("UIStroke", {Color = Color3.fromRGB(255, 120, 70), Thickness = 1, Transparency = 0.55, Parent = p.f})
-end
+	OrbScale = New("UIScale", {Scale = BUTTON_SCALE, Parent = Orb})
 
-local Hit = New("TextButton", {
-	Size = UDim2.fromOffset(96, 96), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5),
-	BackgroundTransparency = 1, Text = "", ZIndex = 20, Parent = Orb,
-})
-do
-	local dragging, moved, dStart, sPos
-	Hit.InputBegan:Connect(function(i)
+	local rings = {
+		{size = 118, rot = 0,  sp = 30,  th = 2.4, rad = 30, g = 120},
+		{size = 118, rot = 45, sp = -40, th = 2.4, rad = 30, g = -150},
+		{size = 134, rot = 20, sp = 18,  th = 1.6, rad = 38, g = 90},
+		{size = 104, rot = 70, sp = -55, th = 1.8, rad = 24, g = 200},
+	}
+	for _, d in ipairs(rings) do
+		d.f = New("Frame", {
+			Size = UDim2.fromOffset(d.size, d.size), Position = UDim2.fromOffset(70, 70),
+			AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, Rotation = d.rot,
+			ZIndex = 1, Parent = Orb,
+		})
+		Corner(d.f, d.rad)
+		local s = New("UIStroke", {Thickness = d.th, Color = Color3.new(1, 1, 1), Transparency = 0.05, Parent = d.f})
+		local g = New("UIGradient", {Color = orangeSeq(), Parent = s})
+		spinners[g] = d.g
+	end
+
+	local Glow = New("Frame", {
+		Size = UDim2.fromOffset(106, 106), Position = UDim2.fromOffset(70, 70), AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = C.mars, BackgroundTransparency = 0.8, ZIndex = 1, Parent = Orb,
+	})
+	Corner(Glow, 32)
+
+	local Btn = New("ImageButton", {
+		Size = UDim2.fromOffset(92, 92), Position = UDim2.fromOffset(70, 70), AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = C.bg, Image = IMAGE, ScaleType = FILL_MODE, AutoButtonColor = false,
+		ZIndex = 5, Parent = Orb,
+	})
+	Corner(Btn, 16)
+	New("UIStroke", {Color = C.mars2, Thickness = 2, Parent = Btn})
+
+	local dots = {}
+	for i = 1, 6 do
+		local d = New("Frame", {
+			Size = UDim2.fromOffset(6, 6), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = C.mars2,
+			BorderSizePixel = 0, ZIndex = 6, Parent = Orb,
+		})
+		Corner(d, 3)
+		dots[i] = {f = d, ph = (i / 6) * math.pi * 2}
+	end
+
+	local OrcaText = New("TextLabel", {
+		Text = "ORCA", Font = Enum.Font.GothamBlack, TextSize = 24, TextColor3 = C.mars2,
+		TextTransparency = 1, TextStrokeColor3 = Color3.fromRGB(120, 25, 10), TextStrokeTransparency = 1,
+		BackgroundTransparency = 1, Size = UDim2.fromOffset(140, 28), Position = UDim2.fromOffset(0, 140),
+		ZIndex = 7, Parent = Orb,
+	})
+	task.spawn(function()
+		local fade = TEXT_CYCLE * 0.4
+		local rest = TEXT_CYCLE - fade * 2
+		while Gui.Parent do
+			Tw(OrcaText, fade, {TextTransparency = 0, TextStrokeTransparency = 0.4}, Enum.EasingStyle.Sine)
+			task.wait(fade)
+			Tw(OrcaText, fade, {TextTransparency = 1, TextStrokeTransparency = 1}, Enum.EasingStyle.Sine)
+			task.wait(fade + rest)
+		end
+	end)
+
+	-- سحب الزر + ضغطة = فتح/غلق السكربت
+	local dragging, moved, dStart, sPos = false, false, nil, nil
+	Btn.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
 			dragging, moved, dStart, sPos = true, false, i.Position, Orb.Position
 			i.Changed:Connect(function()
@@ -2407,44 +2429,45 @@ do
 			end
 		end
 	end))
+
+	Btn.MouseEnter:Connect(function() Tw(Btn, 0.2, {Size = UDim2.fromOffset(98, 98)}, Enum.EasingStyle.Back) end)
+	Btn.MouseLeave:Connect(function() Tw(Btn, 0.2, {Size = UDim2.fromOffset(92, 92)}, Enum.EasingStyle.Back) end)
+
+	-- أنيميشن الحلقات والتوهج والنقط
+	table.insert(conns, RunService.Heartbeat:Connect(function(dt)
+		local t = os.clock()
+
+		for g, sp in pairs(spinners) do
+			if g.Parent then g.Rotation = (g.Rotation + dt * sp) % 360 else spinners[g] = nil end
+		end
+		for l, off in pairs(hueTexts) do
+			if l.Parent then l.TextColor3 = Color3.fromHSV((t * 0.25 + off) % 1, 0.65, 1) else hueTexts[l] = nil end
+		end
+		for _, s in ipairs(stars) do
+			s.f.BackgroundTransparency = 0.45 + 0.5 * math.sin(t * s.sp + s.ph)
+		end
+
+		for _, d in ipairs(rings) do
+			d.f.Rotation = (d.rot + t * d.sp) % 360
+		end
+		local pulse = math.sin(t * 2.4)
+		Glow.Size = UDim2.fromOffset(106 + pulse * 8, 106 + pulse * 8)
+		Glow.BackgroundTransparency = 0.78 + pulse * 0.08
+		for _, d in ipairs(dots) do
+			local a = t * 1.6 + d.ph
+			d.f.Position = UDim2.fromOffset(70 + math.cos(a) * 62, 70 + math.sin(a) * 62)
+			d.f.BackgroundTransparency = 0.2 + 0.5 * (0.5 + 0.5 * math.sin(a * 2))
+		end
+	end))
 end
 
-table.insert(conns, RunService.Heartbeat:Connect(function(dt)
-	local t = os.clock()
-
-	for g, sp in pairs(spinners) do
-		if g.Parent then g.Rotation = (g.Rotation + dt * sp) % 360 else spinners[g] = nil end
-	end
-	for l, off in pairs(hueTexts) do
-		if l.Parent then l.TextColor3 = Color3.fromHSV((t * 0.25 + off) % 1, 0.65, 1) else hueTexts[l] = nil end
-	end
-
-	for _, s in ipairs(stars) do
-		s.f.BackgroundTransparency = 0.45 + 0.5 * math.sin(t * s.sp + s.ph)
-	end
-
-	for _, p in ipairs(planets) do
-		local a = t * p.sp + p.ph
-		local x, y = math.cos(a) * p.rx, math.sin(a) * p.ry
-		local th = math.rad(p.tilt)
-		local px = x * math.cos(th) - y * math.sin(th)
-		local py = x * math.sin(th) + y * math.cos(th)
-		local z = math.sin(a)
-		local s = p.size * (1 + 0.28 * z)
-		p.f.Size = UDim2.fromOffset(s, s)
-		p.f.Position = UDim2.new(0.5, px, 0.5, py)
-		p.f.ZIndex = z > 0 and 6 or 1
-	end
-
-	for _, d in ipairs(rings) do
-		d.f.Rotation = (d.rot + t * d.sp) % 360
-	end
-	Halo.Size = UDim2.fromOffset(74 + math.sin(t * 2.2) * 3, 74 + math.sin(t * 2.2) * 3)
-end))
-
 SelectTab(T.Owners)
-Orb.Size = UDim2.fromOffset(0, 0)
-Tw(Orb, 0.6, {Size = UDim2.fromOffset(150, 150)}, Enum.EasingStyle.Back)
+-- ظهور الزر بأنيميشن (من صفر لحجمه)
+do
+	local target = OrbScale.Scale
+	OrbScale.Scale = 0
+	Tw(OrbScale, 0.6, {Scale = target}, Enum.EasingStyle.Back)
+end
 Notify("uiogunio / orca", "Loaded. Tap the orca orb to open the hub.", C.mars)
 task.spawn(function()
 	task.wait(1.5)
