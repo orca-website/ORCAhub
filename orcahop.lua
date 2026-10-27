@@ -2383,12 +2383,43 @@ end
 
 local function OpenMain()
 	isOpen = true
-	Main.Visible = true
-	MainScale.Scale = 0.01
-	Tw(MainScale, 0.45, {Scale = baseScale()}, Enum.EasingStyle.Back)
 	-- حفظ/استرجاع مكان السكرول (داخل pcall عشان أي خطأ فيه ما يمنع فتح النافذة)
 	pcall(function() Mem.S.open = true end)
 	Mem.ready = false
+	local function applyAll()
+		for _, tb in ipairs(allTabs) do
+			local v = Mem.S.raw[tb.name]
+			if v and v > 0 then tb.page.CanvasPosition = Vector2.new(0, v) end
+		end
+		local sf = Mem.S.sideraw
+		if sf and sf > 0 then Sidebar.CanvasPosition = Vector2.new(0, sf) end
+	end
+	-- نجهز النافذة بحجمها الكامل خارج الشاشة، نحط السكرول في مكانه، وبعدها نبدأ الأنيميشن (ما يبان أي رجوع للأول)
+	local keepPos = Main.Position
+	Main.Position = UDim2.fromScale(10, 10)
+	MainScale.Scale = baseScale()
+	Main.Visible = true
+	for _ = 1, 3 do
+		pcall(applyAll)
+		RunService.RenderStepped:Wait()
+	end
+	pcall(applyAll)
+	Main.Position = keepPos
+	if not isOpen then
+		Main.Visible = false
+		return
+	end
+	MainScale.Scale = 0.01
+	Tw(MainScale, 0.45, {Scale = baseScale()}, Enum.EasingStyle.Back)
+	-- نثبت المكان المحفوظ كل فريم لين تكمل الأنيميشن (لأن النافذة وهي صغيرة السكرول يتصفر)
+	do
+		local t0 = os.clock()
+		local rc
+		rc = RunService.RenderStepped:Connect(function()
+			if not isOpen or os.clock() - t0 > 0.6 then rc:Disconnect() return end
+			pcall(applyAll)
+		end)
+	end
 	task.delay(0.62, function()
 		if not isOpen then return end
 		Mem.ready = true
