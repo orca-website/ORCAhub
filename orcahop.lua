@@ -1867,7 +1867,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (معدل بالكامل ليعمل بشكل مثالي عند ملامسة الظهر والارتداد للخلف)
+-- BANG & BANG FACE (محدث ليلحق إحداثيات الظهر الفورية للرقصات والإيموتس + تقليل تقدم Face Bang درجتين)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -2026,13 +2026,15 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				-- التعديل هنا: الارتداد للخلف والالتصاق المثالي بظهر اللاعب واتجاهه
+				-- استخدام جزء الظهر الفعلي (Torso أو UpperTorso) لكي يتبع الرقصات والإيموتس بدقة تامة
+				local targetTorso = targetChar:FindFirstChild("UpperTorso") or targetChar:FindFirstChild("Torso") or tRoot
 				local offsetZ = math.sin(bangAnimLoop) * (bangSize * 0.35)
-				mRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, (bangSize * 0.45) + offsetZ) * CFrame.Angles(0, 0, 0)
+				mRoot.CFrame = targetTorso.CFrame * CFrame.new(0, 0, (bangSize * 0.45) + offsetZ)
 			elseif faceOn and tHead then
+				-- تخفيف التقدم للأمام بمقدار يناسب طلبك (تقليل التقدم درجتين/ثلاث درجات لتكون أكثر ثباتاً)
 				local offsetZ = math.sin(bangAnimLoop) * (faceSize * 0.28)
 				myHum.Sit = true
-				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.5, -0.9 + offsetZ) * CFrame.Angles(0, math.pi, 0)
+				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.45, -0.7 + offsetZ) * CFrame.Angles(0, math.pi, 0)
 			end
 		end
 	end
