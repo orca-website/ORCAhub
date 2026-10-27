@@ -66,7 +66,7 @@ end
 local spinners, hueTexts, conns = {}, {}, {}
 
 ------------------------------------------------------------------
--- Drawn icons (built from shapes, no emojis)
+-- Drawn icons
 ------------------------------------------------------------------
 local TextService = game:GetService("TextService")
 
@@ -205,7 +205,7 @@ local function recolor(root, col)
 end
 
 ------------------------------------------------------------------
--- GUI root (re-execute safe)
+-- GUI root
 ------------------------------------------------------------------
 local function getRoot()
 	local ok, g = pcall(function() return gethui and gethui() end)
@@ -373,13 +373,18 @@ local Content = New("Frame", {
 Corner(Content, 12)
 
 ------------------------------------------------------------------
--- Tab system (محدث: حفظ مكان التمرير)
+-- Tab system (محدث: حفظ مكان التمرير لكل تبويب تماماً)
 ------------------------------------------------------------------
 local allTabs = {}
 local tabOrder = 0
 local currentTab = nil
 
 local function SelectTab(t)
+	-- حفظ مكان التمرير للتبويب الحالي قبل الخروج منه
+	if currentTab and currentTab.page then
+		currentTab.lastScroll = currentTab.page.CanvasPosition
+	end
+	
 	currentTab = t
 	for _, o in ipairs(allTabs) do
 		local on = (o == t)
@@ -389,13 +394,17 @@ local function SelectTab(t)
 		o.label.TextColor3 = on and C.text or C.sub
 		recolor(o.icon, on and C.mars2 or C.sub)
 	end
+	
+	-- استعادة مكان التمرير المحفوظ فور إظهار التبويب
+	t.page.CanvasPosition = t.lastScroll or Vector2.new(0, 0)
+	
 	t.page.Position = UDim2.fromOffset(0, 14)
 	Tw(t.page, 0.3, {Position = UDim2.fromOffset(0, 0)}, Enum.EasingStyle.Quint)
 end
 
 local function CreateTab(name, icon)
 	tabOrder += 1
-	local tab = {}
+	local tab = {lastScroll = Vector2.new(0, 0)}
 	local btn = New("TextButton", {
 		Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = C.card, BackgroundTransparency = 1,
 		Text = "", AutoButtonColor = false, LayoutOrder = tabOrder, Parent = Sidebar,
@@ -419,6 +428,13 @@ local function CreateTab(name, icon)
 		New("UIListLayout", {Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder}),
 		New("UIPadding", {PaddingTop = UDim.new(0, 10), PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 12), PaddingBottom = UDim.new(0, 10)}),
 	})
+
+	-- تحديث مكان التمرير تلقائياً أثناء تحريكه لضمان عدم ضياعه نهائياً
+	page:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+		if currentTab == tab then
+			tab.lastScroll = page.CanvasPosition
+		end
+	end)
 
 	tab.btn, tab.bar, tab.page, tab.icon, tab.label = btn, bar, page, tabIcon, tabLabel
 	table.insert(allTabs, tab)
@@ -1866,7 +1882,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (محدث: إصلاح مدى الحركة الخلفية والتقدم للأمام حسب الـ Size)
+-- BANG & BANG FACE
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1875,7 +1891,7 @@ local bangTarget, bangAway = nil, false
 
 local bangAnimTrack = nil
 local bangSpeed, faceSpeed = 5, 5
-local bangSize, faceSize = 4, 4 -- القيمة الافتراضية 4 لكليهما
+local bangSize, faceSize = 4, 4
 local originalAnimateScript = nil
 
 local function applyStance(active)
@@ -2052,7 +2068,7 @@ table.insert(conns, Players.PlayerAdded:Connect(function(p)
 end))
 
 ------------------------------------------------------------------
--- SMLA tab (player tracker)
+-- SMLA tab
 ------------------------------------------------------------------
 local GREEN = Color3.fromRGB(46, 200, 110)
 local RED = Color3.fromRGB(235, 60, 70)
@@ -2320,13 +2336,13 @@ do
 end
 
 ------------------------------------------------------------------
--- ORCA button (صورة + حلقات برتقالية + كلمة ORCA)  <<< الزر الجديد
+-- ORCA button
 ------------------------------------------------------------------
 local Orb, OrbScale
 do
-	local IMAGE_ID     = 118123159790059  -- ID ديال الصورة (غيره لو تبي صورة ثانية)
-	local BUTTON_SCALE = 0.55             -- حجم الزر (0.5 صغير / 0.8 كبير)
-	local TEXT_CYCLE   = 3                -- كل شحال ثانية تعاود كلمة ORCA
+	local IMAGE_ID     = 118123159790059
+	local BUTTON_SCALE = 0.55
+	local TEXT_CYCLE   = 3
 	local FILL_MODE    = Enum.ScaleType.Stretch
 	local IMAGE        = "rbxassetid://" .. IMAGE_ID
 
@@ -2404,7 +2420,6 @@ do
 		end
 	end)
 
-	-- سحب الزر + ضغطة = فتح/غلق السكربت
 	local dragging, moved, dStart, sPos = false, false, nil, nil
 	Btn.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
@@ -2430,7 +2445,6 @@ do
 	Btn.MouseEnter:Connect(function() Tw(Btn, 0.2, {Size = UDim2.fromOffset(98, 98)}, Enum.EasingStyle.Back) end)
 	Btn.MouseLeave:Connect(function() Tw(Btn, 0.2, {Size = UDim2.fromOffset(92, 92)}, Enum.EasingStyle.Back) end)
 
-	-- أنيميشن الحلقات والتوهج والنقط
 	table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 		local t = os.clock()
 
@@ -2460,7 +2474,6 @@ end
 
 if currentTab then SelectTab(currentTab) else SelectTab(T.Owners) end
 
--- ظهور الزر بأنيميشن (من صفر لحجمه)
 do
 	local target = OrbScale.Scale
 	OrbScale.Scale = 0
