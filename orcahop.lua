@@ -657,7 +657,7 @@ local function CreateTab(name, icon)
 				page.ScrollingEnabled = false
 				setFromX(i.Position.X)
 				i.Changed:Connect(function()
-					if i.UserInputState == Enum.UserInputMem.S.End then
+					if i.UserInputState == Enum.UserInputState.End then
 						dragging = false
 						page.ScrollingEnabled = true
 					end
@@ -2426,7 +2426,7 @@ do
 	TopBar.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
 			dragging, dStart, sPos = true, false, i.Position, Main.Position
-			i.Changed:Connect(function() if i.UserInputState == Enum.UserInputMem.S.End then dragging = false end end)
+			i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then dragging = false end end)
 		end
 	end)
 	table.insert(conns, UIS.InputChanged:Connect(function(i)
@@ -2536,7 +2536,7 @@ do
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
 			dragging, moved, dStart, sPos = true, false, i.Position, Orb.Position
 			i.Changed:Connect(function()
-				if i.UserInputState == Enum.UserInputMem.S.End then
+				if i.UserInputState == Enum.UserInputState.End then
 					dragging = false
 					if not moved then ToggleMain() end
 				end
