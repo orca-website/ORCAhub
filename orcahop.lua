@@ -2318,28 +2318,34 @@ T.Misc:Button("Reset Character", function()
 	local h = getHum()
 	if h then resetting = true h.Health = 0 end
 end)
--- [FIXED] Rejoin: always goes back to the SAME server (same JobId), retries if the teleport fails,
--- and never falls back to a random/new server.
 T.Misc:Button("Rejoin", function()
+	-- يرجعك لنفس السرفر (نفس JobId) وما يحولك لسرفر ثاني أبداً
 	local TS = game:GetService("TeleportService")
 	Notify("Rejoin", "Rejoining the same server...")
-	local tries = 0
+	local attempts, maxAttempts = 0, 6
 	local failConn
-	local function go()
-		tries += 1
-		pcall(function() TS:TeleportToPlaceInstance(game.PlaceId, game.JobId, LP) end)
+	local function try()
+		attempts += 1
+		local ok = pcall(function()
+			TS:TeleportToPlaceInstance(game.PlaceId, game.JobId, LP)
+		end)
+		if not ok and attempts < maxAttempts then
+			task.delay(1.5, try)
+		elseif not ok then
+			if failConn then failConn:Disconnect() end
+			Notify("Rejoin", "Could not rejoin the same server", C.mars2, "warn")
+		end
 	end
-	failConn = TS.TeleportInitFailed:Connect(function(plr)
-		if plr ~= LP then return end
-		if tries < 5 then
-			task.wait(1.5)
-			go()
+	failConn = TS.TeleportInitFailed:Connect(function(player)
+		if player ~= LP then return end
+		if attempts < maxAttempts then
+			task.delay(1.5, try)
 		else
 			failConn:Disconnect()
-			Notify("Rejoin", "Could not rejoin the same server", C.mars2)
+			Notify("Rejoin", "Could not rejoin the same server", C.mars2, "warn")
 		end
 	end)
-	go()
+	try()
 end)
 T.Misc:Button("Server Hop", function()
 	Notify("Server Hop", "Searching for a server...")
@@ -2445,17 +2451,20 @@ local function holdScroll(dur)
 	end)
 end
 
--- [FIXED] الفتح والإخفاء: الواجهة ما تصغر لـ Scale = 0 بعد الآن، بس Visible = true / false
--- والسكربت يظل شغال والسكرول يبقى مكانه.
 local function OpenMain()
 	isOpen = true
 	State.open = true
-	uiReady = false
-	MainScale.Scale = baseScale()
 	Main.Visible = true
-	holdScroll(0.3)
-	-- بعد ما تظهر النافذة رجّع السكرول لمكانه
-	task.delay(0.1, function()
+	-- لو النافذة كانت مفتوحة قبل (بس مخفية): بس أظهرها، السكرول والتاب يبقون زي ما هم
+	if uiReady then
+		MainScale.Scale = baseScale()
+		return
+	end
+	MainScale.Scale = 0
+	holdScroll(0.6)
+	Tw(MainScale, 0.45, {Scale = baseScale()}, Enum.EasingStyle.Back)
+	-- بعد ما تنفتح النافذة بالكامل رجّع السكرول لمكانه (كان يضيع وهي تنفتح/تنقفل)
+	task.delay(0.62, function()
 		if not isOpen then return end
 		uiReady = true
 		local cur = currentTab
@@ -2469,8 +2478,8 @@ local function OpenMain()
 	end)
 end
 local function CloseMain()
+	-- إخفاء فقط (Visible = false) بدون تصغير ولا حذف، والسكربت يظل شغال وكل شي يبقى مكانه
 	snapshotScroll()
-	uiReady = false
 	isOpen = false
 	State.open = false
 	Main.Visible = false
