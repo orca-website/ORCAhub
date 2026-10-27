@@ -1876,7 +1876,7 @@ local bangTarget, bangAway = nil, false
 
 local bangAnimTrack = nil
 local bangSpeed, faceSpeed = 5, 5
-local bangSize, faceSize = 3, 4 -- القيمة الافتراضية للبانج 3 والبانج فيس 4
+local bangSize, faceSize = 3, 4 -- القيم الافتراضية المناسبة للبانج والبانج فيس
 local originalAnimateScript = nil
 
 local function applyStance(active)
@@ -1969,7 +1969,7 @@ faceBtn = T.Bang:ColorToggle("BANG FACE", function(state)
 		local p = bangPicker.Get()
 		if not p or not p.Parent then
 			faceOn = false
-			if faceBtn then faceBtn.Set(false) end
+			if faceBtn then faceBtn.Set(false)
 			Notify("BANG FACE", "Select a player first", C.mars2, "warn")
 			return
 		end
@@ -2031,13 +2031,13 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			
 			if bangOn then
 				local rawSine = math.sin(bangAnimLoop)
-				-- الـ Bang العادي يلمس الظهر تماماً ولا يتقدم للأمام نهائياً، والتراجع للخلف يتم التحكم به عبر سلايدر size bang
-				local offsetZ = rawSine > 0 and 0 or (rawSine * (bangSize * 0.35))
+				-- الـ Bang العادي: يتقدم للأمام ويلامس الظهر تماماً ثم يتراجع للخلف بناءً على قيمة size bang
+				local offsetZ = rawSine > 0 and (rawSine * 0.45) or (rawSine * (bangSize * 0.35))
 				local targetPart = targetChar:FindFirstChild("UpperTorso") or targetChar:FindFirstChild("Torso") or tRoot
 				mRoot.CFrame = targetPart.CFrame * CFrame.new(0, 0, 0.8 + offsetZ)
 			elseif faceOn and tHead then
 				local rawSine = math.sin(bangAnimLoop)
-				-- الـ Face Bang يعمل بالحركة الأصلية (للأمام وللخلف) مع التحكم الخلفي عبر سلايدر size face bang
+				-- الـ Face Bang يعمل بحركته الأصلية المثالية دون أي تغيير
 				local offsetZ = rawSine > 0 and (rawSine * 0.4) or (rawSine * (faceSize * 0.22))
 				myHum.Sit = true
 				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.5, -0.6 + offsetZ) * CFrame.Angles(0, math.pi, 0)
