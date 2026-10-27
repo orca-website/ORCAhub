@@ -2031,13 +2031,13 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			
 			if bangOn then
 				local rawSine = math.sin(bangAnimLoop)
-				-- الحركة للأمام طبيعية، والتراجع للخلف يتحكم به سلايدر size bang بمجال (1 إلى 30)
-				local offsetZ = rawSine > 0 and (rawSine * 0.8) or (rawSine * (bangSize * 0.35))
+				-- الـ Bang العادي يلمس الظهر تماماً ولا يتقدم للأمام نهائياً، والتراجع للخلف يتم التحكم به عبر سلايدر size bang
+				local offsetZ = rawSine > 0 and 0 or (rawSine * (bangSize * 0.35))
 				local targetPart = targetChar:FindFirstChild("UpperTorso") or targetChar:FindFirstChild("Torso") or tRoot
 				mRoot.CFrame = targetPart.CFrame * CFrame.new(0, 0, 0.8 + offsetZ)
 			elseif faceOn and tHead then
 				local rawSine = math.sin(bangAnimLoop)
-				-- الوجه للأمام طبيعي، والتراجع للخلف يتحكم به سلايدر size face bang بمجال (1 إلى 30)
+				-- الـ Face Bang يعمل بالحركة الأصلية (للأمام وللخلف) مع التحكم الخلفي عبر سلايدر size face bang
 				local offsetZ = rawSine > 0 and (rawSine * 0.4) or (rawSine * (faceSize * 0.22))
 				myHum.Sit = true
 				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.5, -0.6 + offsetZ) * CFrame.Angles(0, math.pi, 0)
@@ -2455,6 +2455,6 @@ Tw(Orb, 0.6, {Size = UDim2.fromOffset(150, 150)}, Enum.EasingStyle.Back)
 Notify("uiogunio / orca", "Loaded. Tap the orca orb to open the hub.", C.mars)
 task.spawn(function()
 	task.wait(1.5)
-	SetHeadText()
+	SetHeadTest()
 	SendChat("-----------uiogunio / orca ____[on] 🏠")
 end)
