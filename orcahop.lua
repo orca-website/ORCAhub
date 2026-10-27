@@ -65,8 +65,14 @@ end
 
 local spinners, hueTexts, conns = {}, {}, {}
 
+-- حفظ مكانك (تاب / سكرول / فتح النافذة) عشان لما تعيد تشغيل السكربت يرجعك لنفس المكان
+local Env = (getgenv and getgenv()) or _G
+Env.OrcaState = Env.OrcaState or {}
+local State = Env.OrcaState
+State.scroll = State.scroll or {}
+
 ------------------------------------------------------------------
--- Drawn icons
+-- Drawn icons (built from shapes, no emojis)
 ------------------------------------------------------------------
 local TextService = game:GetService("TextService")
 
@@ -205,7 +211,7 @@ local function recolor(root, col)
 end
 
 ------------------------------------------------------------------
--- GUI root
+-- GUI root (re-execute safe)
 ------------------------------------------------------------------
 local function getRoot()
 	local ok, g = pcall(function() return gethui and gethui() end)
@@ -293,6 +299,14 @@ local Main = New("Frame", {
 })
 Corner(Main, 16)
 local MainScale = New("UIScale", {Scale = 0, Parent = Main})
+if State.mainPos then
+	local m = State.mainPos
+	Main.Position = UDim2.new(m[1], m[2], m[3], m[4])
+end
+Main:GetPropertyChangedSignal("Position"):Connect(function()
+	local p = Main.Position
+	State.mainPos = {p.X.Scale, p.X.Offset, p.Y.Scale, p.Y.Offset}
+end)
 local isOpen = false
 New("UIGradient", {
 	Color = ColorSequence.new(Color3.fromRGB(24, 11, 15), Color3.fromRGB(10, 8, 20)),
@@ -365,6 +379,21 @@ local Sidebar = New("ScrollingFrame", {
 	New("UIPadding", {PaddingTop = UDim.new(0, 8), PaddingLeft = UDim.new(0, 7), PaddingRight = UDim.new(0, 7), PaddingBottom = UDim.new(0, 8)}),
 })
 Corner(Sidebar, 12)
+local sideReady = false
+Sidebar:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+	if sideReady then State.side = Sidebar.CanvasPosition.Y end
+end)
+task.spawn(function()
+	local y = State.side
+	if y and y > 0 then
+		for _ = 1, 20 do
+			Sidebar.CanvasPosition = Vector2.new(0, y)
+			if math.abs(Sidebar.CanvasPosition.Y - y) < 2 then break end
+			task.wait(0.1)
+		end
+	end
+	sideReady = true
+end)
 
 local Content = New("Frame", {
 	Size = UDim2.fromOffset(388, 296), Position = UDim2.fromOffset(162, 54),
@@ -373,19 +402,12 @@ local Content = New("Frame", {
 Corner(Content, 12)
 
 ------------------------------------------------------------------
--- Tab system (محدث: حفظ مكان التمرير لكل تبويب تماماً)
+-- Tab system
 ------------------------------------------------------------------
 local allTabs = {}
 local tabOrder = 0
-local currentTab = nil
 
 local function SelectTab(t)
-	-- حفظ مكان التمرير للتبويب الحالي قبل الخروج منه
-	if currentTab and currentTab.page then
-		currentTab.lastScroll = currentTab.page.CanvasPosition
-	end
-	
-	currentTab = t
 	for _, o in ipairs(allTabs) do
 		local on = (o == t)
 		o.page.Visible = on
@@ -394,17 +416,30 @@ local function SelectTab(t)
 		o.label.TextColor3 = on and C.text or C.sub
 		recolor(o.icon, on and C.mars2 or C.sub)
 	end
-	
-	-- استعادة مكان التمرير المحفوظ فور إظهار التبويب
-	t.page.CanvasPosition = t.lastScroll or Vector2.new(0, 0)
-	
+	State.tab = t.name
+	if not t.restored then
+		t.restored = true
+		local y = State.scroll[t.name]
+		if y and y > 0 then
+			task.spawn(function()
+				for _ = 1, 20 do
+					t.page.CanvasPosition = Vector2.new(0, y)
+					if math.abs(t.page.CanvasPosition.Y - y) < 2 then break end
+					task.wait(0.1)
+				end
+				t.ready = true
+			end)
+		else
+			t.ready = true
+		end
+	end
 	t.page.Position = UDim2.fromOffset(0, 14)
 	Tw(t.page, 0.3, {Position = UDim2.fromOffset(0, 0)}, Enum.EasingStyle.Quint)
 end
 
 local function CreateTab(name, icon)
 	tabOrder += 1
-	local tab = {lastScroll = Vector2.new(0, 0)}
+	local tab = {}
 	local btn = New("TextButton", {
 		Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = C.card, BackgroundTransparency = 1,
 		Text = "", AutoButtonColor = false, LayoutOrder = tabOrder, Parent = Sidebar,
@@ -429,14 +464,11 @@ local function CreateTab(name, icon)
 		New("UIPadding", {PaddingTop = UDim.new(0, 10), PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 12), PaddingBottom = UDim.new(0, 10)}),
 	})
 
-	-- تحديث مكان التمرير تلقائياً أثناء تحريكه لضمان عدم ضياعه نهائياً
-	page:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-		if currentTab == tab then
-			tab.lastScroll = page.CanvasPosition
-		end
-	end)
-
 	tab.btn, tab.bar, tab.page, tab.icon, tab.label = btn, bar, page, tabIcon, tabLabel
+	tab.name = name
+	page:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+		if tab.ready then State.scroll[name] = page.CanvasPosition.Y end
+	end)
 	table.insert(allTabs, tab)
 	btn.MouseButton1Click:Connect(function() SelectTab(tab) end)
 
@@ -1882,7 +1914,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE
+-- BANG & BANG FACE (محدث: إصلاح مدى الحركة الخلفية والتقدم للأمام حسب الـ Size)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1891,7 +1923,7 @@ local bangTarget, bangAway = nil, false
 
 local bangAnimTrack = nil
 local bangSpeed, faceSpeed = 5, 5
-local bangSize, faceSize = 4, 4
+local bangSize, faceSize = 4, 4 -- القيمة الافتراضية 4 لكليهما
 local originalAnimateScript = nil
 
 local function applyStance(active)
@@ -2045,6 +2077,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 				local offsetZ = math.sin(bangAnimLoop) * (bangSize * 0.35)
 				mRoot.CFrame = targetTorso.CFrame * CFrame.new(0, 0, (bangSize * 0.45) + offsetZ)
 			elseif faceOn and tHead then
+				-- تم إصلاح وتوسيع مدى الرجوع للخلف والتقدم للأمام ليتجاوب تماماً مع شريط الـ Size (من 1 إلى 10)
 				local offsetZ = math.sin(bangAnimLoop) * (faceSize * 0.18)
 				myHum.Sit = true
 				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.4, (-0.6 - (faceSize * 0.08)) + offsetZ) * CFrame.Angles(0, math.pi, 0)
@@ -2068,7 +2101,7 @@ table.insert(conns, Players.PlayerAdded:Connect(function(p)
 end))
 
 ------------------------------------------------------------------
--- SMLA tab
+-- SMLA tab (player tracker)
 ------------------------------------------------------------------
 local GREEN = Color3.fromRGB(46, 200, 110)
 local RED = Color3.fromRGB(235, 60, 70)
@@ -2211,7 +2244,18 @@ T.Misc:Button("Reset Character", function()
 	if h then resetting = true h.Health = 0 end
 end)
 T.Misc:Button("Rejoin", function()
-	game:GetService("TeleportService"):Teleport(game.PlaceId, LP)
+	local TS = game:GetService("TeleportService")
+	Notify("Rejoin", "Rejoining the same server...")
+	if #Players:GetPlayers() > 1 then
+		local failConn
+		failConn = TS.TeleportInitFailed:Connect(function()
+			failConn:Disconnect()
+			pcall(function() TS:Teleport(game.PlaceId, LP) end)
+		end)
+		TS:TeleportToPlaceInstance(game.PlaceId, game.JobId, LP)
+	else
+		TS:Teleport(game.PlaceId, LP)
+	end
 end)
 T.Misc:Button("Server Hop", function()
 	Notify("Server Hop", "Searching for a server...")
@@ -2307,12 +2351,14 @@ end
 
 local function OpenMain()
 	isOpen = true
+	State.open = true
 	Main.Visible = true
 	MainScale.Scale = 0
 	Tw(MainScale, 0.45, {Scale = baseScale()}, Enum.EasingStyle.Back)
 end
 local function CloseMain()
 	isOpen = false
+	State.open = false
 	local tw = Tw(MainScale, 0.25, {Scale = 0}, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 	tw.Completed:Connect(function() if not isOpen then Main.Visible = false end end)
 end
@@ -2336,13 +2382,13 @@ do
 end
 
 ------------------------------------------------------------------
--- ORCA button
+-- ORCA button (صورة + حلقات برتقالية + كلمة ORCA)  <<< الزر الجديد
 ------------------------------------------------------------------
 local Orb, OrbScale
 do
-	local IMAGE_ID     = 118123159790059
-	local BUTTON_SCALE = 0.55
-	local TEXT_CYCLE   = 3
+	local IMAGE_ID     = 118123159790059  -- ID ديال الصورة (غيره لو تبي صورة ثانية)
+	local BUTTON_SCALE = 0.55             -- حجم الزر (0.5 صغير / 0.8 كبير)
+	local TEXT_CYCLE   = 3                -- كل شحال ثانية تعاود كلمة ORCA
 	local FILL_MODE    = Enum.ScaleType.Stretch
 	local IMAGE        = "rbxassetid://" .. IMAGE_ID
 
@@ -2360,6 +2406,14 @@ do
 		BackgroundTransparency = 1, Parent = Gui,
 	})
 	OrbScale = New("UIScale", {Scale = BUTTON_SCALE, Parent = Orb})
+	if State.orbPos then
+		local o = State.orbPos
+		Orb.Position = UDim2.new(o[1], o[2], o[3], o[4])
+	end
+	Orb:GetPropertyChangedSignal("Position"):Connect(function()
+		local p = Orb.Position
+		State.orbPos = {p.X.Scale, p.X.Offset, p.Y.Scale, p.Y.Offset}
+	end)
 
 	local rings = {
 		{size = 118, rot = 0,  sp = 30,  th = 2.4, rad = 30, g = 120},
@@ -2420,6 +2474,7 @@ do
 		end
 	end)
 
+	-- سحب الزر + ضغطة = فتح/غلق السكربت
 	local dragging, moved, dStart, sPos = false, false, nil, nil
 	Btn.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
@@ -2445,6 +2500,7 @@ do
 	Btn.MouseEnter:Connect(function() Tw(Btn, 0.2, {Size = UDim2.fromOffset(98, 98)}, Enum.EasingStyle.Back) end)
 	Btn.MouseLeave:Connect(function() Tw(Btn, 0.2, {Size = UDim2.fromOffset(92, 92)}, Enum.EasingStyle.Back) end)
 
+	-- أنيميشن الحلقات والتوهج والنقط
 	table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 		local t = os.clock()
 
@@ -2472,8 +2528,13 @@ do
 	end))
 end
 
-if currentTab then SelectTab(currentTab) else SelectTab(T.Owners) end
-
+local startTab = T.Owners
+for _, o in ipairs(allTabs) do
+	if o.name == State.tab then startTab = o end
+end
+SelectTab(startTab)
+if State.open then task.delay(0.7, OpenMain) end
+-- ظهور الزر بأنيميشن (من صفر لحجمه)
 do
 	local target = OrbScale.Scale
 	OrbScale.Scale = 0
