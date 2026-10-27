@@ -2403,15 +2403,29 @@ local function SendChat(msg)
 	end
 end
 
+-- يثبّت السكرول في مكانه كل فريم وقت أنيميشن الفتح/القفل، عشان ما تبان الصفحة وهي ترجع لفوق
+local function holdScroll(dur)
+	local t0 = os.clock()
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		if os.clock() - t0 > dur or not Gui.Parent then conn:Disconnect() return end
+		local cur = currentTab
+		local y = cur and State.scroll[cur.name]
+		if y and y > 0 then cur.page.CanvasPosition = Vector2.new(0, y) end
+		if State.side and State.side > 0 then Sidebar.CanvasPosition = Vector2.new(0, State.side) end
+	end)
+end
+
 local function OpenMain()
 	isOpen = true
 	State.open = true
 	Main.Visible = true
 	MainScale.Scale = 0
 	uiReady = false
+	holdScroll(0.6)
 	Tw(MainScale, 0.45, {Scale = baseScale()}, Enum.EasingStyle.Back)
 	-- بعد ما تنفتح النافذة بالكامل رجّع السكرول لمكانه (كان يضيع وهي تنفتح/تنقفل)
-	task.delay(0.55, function()
+	task.delay(0.62, function()
 		if not isOpen then return end
 		uiReady = true
 		local cur = currentTab
@@ -2427,6 +2441,7 @@ end
 local function CloseMain()
 	snapshotScroll()
 	uiReady = false
+	holdScroll(0.3)
 	isOpen = false
 	State.open = false
 	local tw = Tw(MainScale, 0.25, {Scale = 0}, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
