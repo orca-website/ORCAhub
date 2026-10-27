@@ -1867,7 +1867,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (محدث ليلحق إحداثيات الظهر الفورية للرقصات والإيموتس + تقليل تقدم Face Bang درجتين)
+-- BANG & BANG FACE (محدث بالافتراضي 4 وتثبيت تقدم Face Bang وثبات الظهر أثناء الإيموتس)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1876,7 +1876,7 @@ local bangTarget, bangAway = nil, false
 
 local bangAnimTrack = nil
 local bangSpeed, faceSpeed = 5, 5
-local bangSize, faceSize = 3, 3 
+local bangSize, faceSize = 4, 4 -- القيمة الافتراضية 4 لكليهما
 local originalAnimateScript = nil
 
 local function applyStance(active)
@@ -1994,18 +1994,18 @@ end)
 
 T.Bang:Header("size", true)
 
-local _, setBangSizeVal = T.Bang:Slider("size bang", 1, 10, 3, function(v)
+local _, setBangSizeVal = T.Bang:Slider("size bang", 1, 10, 4, function(v)
 	bangSize = v
 end)
-local _, setFaceSizeVal = T.Bang:Slider("size face bang", 1, 10, 3, function(v)
+local _, setFaceSizeVal = T.Bang:Slider("size face bang", 1, 10, 4, function(v)
 	faceSize = v
 end)
 
 T.Bang:SmallButton("reset", Color3.fromRGB(225, 50, 60), function()
 	setBangSpeed(5)
 	setFaceSpeed(5)
-	setBangSizeVal(3)
-	setFaceSizeVal(3)
+	setBangSizeVal(4)
+	setFaceSizeVal(4)
 end)
 
 local bangAnimLoop = 0
@@ -2026,15 +2026,15 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				-- استخدام جزء الظهر الفعلي (Torso أو UpperTorso) لكي يتبع الرقصات والإيموتس بدقة تامة
+				-- تتبع إحداثيات الظهر الفعلي للهدف بدقة تامة أثناء الإيموتس والرقصات والارتداد للخلف
 				local targetTorso = targetChar:FindFirstChild("UpperTorso") or targetChar:FindFirstChild("Torso") or tRoot
 				local offsetZ = math.sin(bangAnimLoop) * (bangSize * 0.35)
 				mRoot.CFrame = targetTorso.CFrame * CFrame.new(0, 0, (bangSize * 0.45) + offsetZ)
 			elseif faceOn and tHead then
-				-- تخفيف التقدم للأمام بمقدار يناسب طلبك (تقليل التقدم درجتين/ثلاث درجات لتكون أكثر ثباتاً)
-				local offsetZ = math.sin(bangAnimLoop) * (faceSize * 0.28)
+				-- تثبيت التقدم للأمام وعدم تأثره المفرط بتغيير الـ Size وتخفيضه بما يناسب طلبك
+				local offsetZ = math.sin(bangAnimLoop) * 0.15
 				myHum.Sit = true
-				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.45, -0.7 + offsetZ) * CFrame.Angles(0, math.pi, 0)
+				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.4, -0.6 + offsetZ) * CFrame.Angles(0, math.pi, 0)
 			end
 		end
 	end
@@ -2310,7 +2310,7 @@ do
 	local dragging, dStart, sPos
 	TopBar.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-			dragging, dStart, sPos = true, i.Position, Main.Position
+			dragging, dStart, sPos = true, false, i.Position, Main.Position
 			i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then dragging = false end end)
 		end
 	end)
