@@ -1,4 +1,8 @@
---[[ script orca / uiogunio  broockhaven🏡RB ]]
+--[[
+    uiogunio / orca  «broockhaven»
+    Custom UI (no external library) - Mars theme
+    تحديث: زر ORCA الجديد + حفظ موضع التمرير في القوائم
+]]
 
 local Players      = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -373,12 +377,14 @@ local Content = New("Frame", {
 Corner(Content, 12)
 
 ------------------------------------------------------------------
--- Tab system
+-- Tab system (محدث: حفظ موقع التمرير عند الإغلاق والفتح)
 ------------------------------------------------------------------
 local allTabs = {}
 local tabOrder = 0
+local currentTab = nil
 
 local function SelectTab(t)
+	currentTab = t
 	for _, o in ipairs(allTabs) do
 		local on = (o == t)
 		o.page.Visible = on
@@ -1864,7 +1870,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (محدث: إصلاح مدى الحركة الخلفية والتقدم للأمام حسب الـ Size)
+-- BANG & BANG FACE
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1873,7 +1879,7 @@ local bangTarget, bangAway = nil, false
 
 local bangAnimTrack = nil
 local bangSpeed, faceSpeed = 5, 5
-local bangSize, faceSize = 4, 4 -- القيمة الافتراضية 4 لكليهما
+local bangSize, faceSize = 4, 4
 local originalAnimateScript = nil
 
 local function applyStance(active)
@@ -2027,7 +2033,6 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 				local offsetZ = math.sin(bangAnimLoop) * (bangSize * 0.35)
 				mRoot.CFrame = targetTorso.CFrame * CFrame.new(0, 0, (bangSize * 0.45) + offsetZ)
 			elseif faceOn and tHead then
-				-- تم إصلاح وتوسيع مدى الرجوع للخلف والتقدم للأمام ليتجاوب تماماً مع شريط الـ Size (من 1 إلى 10)
 				local offsetZ = math.sin(bangAnimLoop) * (faceSize * 0.18)
 				myHum.Sit = true
 				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.4, (-0.6 - (faceSize * 0.08)) + offsetZ) * CFrame.Angles(0, math.pi, 0)
@@ -2306,7 +2311,7 @@ do
 	local dragging, dStart, sPos
 	TopBar.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-			dragging, dStart, sPos = true, false, i.Position, Main.Position
+			dragging, dStart, sPos = true, i.Position, Main.Position
 			i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then dragging = false end end)
 		end
 	end)
@@ -2319,13 +2324,13 @@ do
 end
 
 ------------------------------------------------------------------
--- ORCA button (صورة + حلقات برتقالية + كلمة ORCA)  <<< الزر الجديد
+-- ORCA button (صورة + حلقات برتقالية + كلمة ORCA)
 ------------------------------------------------------------------
 local Orb, OrbScale
 do
-	local IMAGE_ID     = 118123159790059  -- ID ديال الصورة (غيره لو تبي صورة ثانية)
-	local BUTTON_SCALE = 0.55             -- حجم الزر (0.5 صغير / 0.8 كبير)
-	local TEXT_CYCLE   = 3                -- كل شحال ثانية تعاود كلمة ORCA
+	local IMAGE_ID     = 118123159790059
+	local BUTTON_SCALE = 0.55
+	local TEXT_CYCLE   = 3
 	local FILL_MODE    = Enum.ScaleType.Stretch
 	local IMAGE        = "rbxassetid://" .. IMAGE_ID
 
@@ -2403,7 +2408,6 @@ do
 		end
 	end)
 
-	-- سحب الزر + ضغطة = فتح/غلق السكربت
 	local dragging, moved, dStart, sPos = false, false, nil, nil
 	Btn.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
@@ -2429,7 +2433,6 @@ do
 	Btn.MouseEnter:Connect(function() Tw(Btn, 0.2, {Size = UDim2.fromOffset(98, 98)}, Enum.EasingStyle.Back) end)
 	Btn.MouseLeave:Connect(function() Tw(Btn, 0.2, {Size = UDim2.fromOffset(92, 92)}, Enum.EasingStyle.Back) end)
 
-	-- أنيميشن الحلقات والتوهج والنقط
 	table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 		local t = os.clock()
 
@@ -2457,8 +2460,8 @@ do
 	end))
 end
 
-SelectTab(T.Owners)
--- ظهور الزر بأنيميشن (من صفر لحجمه)
+if currentTab then SelectTab(currentTab) else SelectTab(T.Owners) end
+
 do
 	local target = OrbScale.Scale
 	OrbScale.Scale = 0
