@@ -1867,7 +1867,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (محدث بالافتراضي 4 وتثبيت تقدم Face Bang وثبات الظهر أثناء الإيموتس)
+-- BANG & BANG FACE (محدث: إصلاح مدى الحركة الخلفية والتقدم للأمام حسب الـ Size)
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -2026,15 +2026,14 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
 			if bangOn then
-				-- تتبع إحداثيات الظهر الفعلي للهدف بدقة تامة أثناء الإيموتس والرقصات والارتداد للخلف
 				local targetTorso = targetChar:FindFirstChild("UpperTorso") or targetChar:FindFirstChild("Torso") or tRoot
 				local offsetZ = math.sin(bangAnimLoop) * (bangSize * 0.35)
 				mRoot.CFrame = targetTorso.CFrame * CFrame.new(0, 0, (bangSize * 0.45) + offsetZ)
 			elseif faceOn and tHead then
-				-- تثبيت التقدم للأمام وعدم تأثره المفرط بتغيير الـ Size وتخفيضه بما يناسب طلبك
-				local offsetZ = math.sin(bangAnimLoop) * 0.15
+				-- تم إصلاح وتوسيع مدى الرجوع للخلف والتقدم للأمام ليتجاوب تماماً مع شريط الـ Size (من 1 إلى 10)
+				local offsetZ = math.sin(bangAnimLoop) * (faceSize * 0.18)
 				myHum.Sit = true
-				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.4, -0.6 + offsetZ) * CFrame.Angles(0, math.pi, 0)
+				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.4, (-0.6 - (faceSize * 0.08)) + offsetZ) * CFrame.Angles(0, math.pi, 0)
 			end
 		end
 	end
