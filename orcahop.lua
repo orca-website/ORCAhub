@@ -66,35 +66,22 @@ end
 local spinners, hueTexts, conns = {}, {}, {}
 
 -- حفظ مكانك (تاب / سكرول / فتح النافذة) عشان لما تعيد تشغيل السكربت يرجعك لنفس المكان
-local Env = (getgenv and getgenv()) or _G
-Env.OrcaState = Env.OrcaState or {}
-local State = Env.OrcaState
-State.scroll = State.scroll or {}
-State.raw = State.raw or {} -- مكان السكرول لكل تاب
-local uiReady = false -- true = النافذة مفتوحة بالكامل (بس وقتها نحفظ مكان السكرول)
-
-local function maxScroll(f) return f.AbsoluteCanvasSize.Y - f.AbsoluteWindowSize.Y end
--- مكان السكرول الحالي (nil لو الأحجام لسا ما انحسبت)
-local function getFrac(f)
-	if maxScroll(f) > 1 then return f.CanvasPosition.Y end
+-- (كل شي داخل جدول واحد Mem عشان ما نزيد المتغيرات المحلية - الحد 200)
+local Mem = {ready = false}
+do
+	local Env = (getgenv and getgenv()) or _G
+	Env.OrcaState = Env.OrcaState or {}
+	Mem.S = Env.OrcaState
+	Mem.S.raw = Mem.S.raw or {}
+end
+function Mem.max(f) return f.AbsoluteCanvasSize.Y - f.AbsoluteWindowSize.Y end
+function Mem.get(f)
+	if Mem.max(f) > 1 then return f.CanvasPosition.Y end
 	return nil
 end
-local function applyFrac(f, v)
+function Mem.apply(f, v)
 	if v then f.CanvasPosition = Vector2.new(0, v) end
 end
-
--- وقت آخر ضغطة (تستخدمها حماية السكرول عشان الصفحة ما ترجع لفوق لما تضغط زر)
-local lastTap = 0
-table.insert(conns, UIS.InputBegan:Connect(function(i)
-	if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-		lastTap = os.clock()
-	end
-end))
-table.insert(conns, UIS.InputEnded:Connect(function(i)
-	if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-		lastTap = os.clock()
-	end
-end))
 
 ------------------------------------------------------------------
 -- Drawn icons (built from shapes, no emojis)
@@ -324,13 +311,13 @@ local Main = New("Frame", {
 })
 Corner(Main, 16)
 local MainScale = New("UIScale", {Scale = 0, Parent = Main})
-if State.mainPos then
-	local m = State.mainPos
+if Mem.S.mainPos then
+	local m = Mem.S.mainPos
 	Main.Position = UDim2.new(m[1], m[2], m[3], m[4])
 end
 Main:GetPropertyChangedSignal("Position"):Connect(function()
 	local p = Main.Position
-	State.mainPos = {p.X.Scale, p.X.Offset, p.Y.Scale, p.Y.Offset}
+	Mem.S.mainPos = {p.X.Scale, p.X.Offset, p.Y.Scale, p.Y.Offset}
 end)
 local isOpen = false
 New("UIGradient", {
@@ -405,9 +392,9 @@ local Sidebar = New("ScrollingFrame", {
 })
 Corner(Sidebar, 12)
 Sidebar:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-	if uiReady then
-		local fr = getFrac(Sidebar)
-		if fr then State.sideraw = fr end
+	if Mem.ready then
+		local fr = Mem.get(Sidebar)
+		if fr then Mem.S.sideraw = fr end
 	end
 end)
 
@@ -422,13 +409,12 @@ Corner(Content, 12)
 ------------------------------------------------------------------
 local allTabs = {}
 local tabOrder = 0
-local currentTab
 
 -- يحط السكرول في مكانه (ينتظر لين النافذة تنفتح وتتحسب أحجامها)
-local function setScroll(frame, v)
+function Mem.set(frame, v)
 	for _ = 1, 100 do
-		if uiReady and maxScroll(frame) > 1 then
-			applyFrac(frame, v)
+		if Mem.ready and Mem.max(frame) > 1 then
+			Mem.apply(frame, v)
 			task.wait(0.05)
 			if math.abs(frame.CanvasPosition.Y - v) < 3 then return true end
 		else
@@ -439,20 +425,20 @@ local function setScroll(frame, v)
 end
 
 -- يحفظ مكان السكرول قبل ما النافذة تتقفل (لأنها وهي تتقفل تنضغط الأحجام وتنمسح المواقع)
-local function snapshotScroll()
-	if not uiReady then return end
+function Mem.snap()
+	if not Mem.ready then return end
 	for _, t in ipairs(allTabs) do
 		if t.ready then
-			local fr = getFrac(t.page)
-			if fr then State.raw[t.name] = fr end
+			local fr = Mem.get(t.page)
+			if fr then Mem.S.raw[t.name] = fr end
 		end
 	end
-	local sf = getFrac(Sidebar)
-	if sf then State.sideraw = sf end
+	local sf = Mem.get(Sidebar)
+	if sf then Mem.S.sideraw = sf end
 end
 Gui.Destroying:Connect(function()
-	snapshotScroll()
-	uiReady = false
+	Mem.snap()
+	Mem.ready = false
 end)
 
 local function SelectTab(t)
@@ -464,24 +450,24 @@ local function SelectTab(t)
 		o.label.TextColor3 = on and C.text or C.sub
 		recolor(o.icon, on and C.mars2 or C.sub)
 	end
-	State.tab = t.name
-	currentTab = t
+	Mem.S.tab = t.name
+	Mem.cur = t
 	if not t.restored then
 		t.restored = true
-		local fr = State.raw[t.name]
+		local fr = Mem.S.raw[t.name]
 		if fr and fr > 0 then
 			task.spawn(function()
-				setScroll(t.page, fr)
+				Mem.set(t.page, fr)
 				t.ready = true
 			end)
 		else
 			t.ready = true
 		end
-	elseif t.ready and uiReady then
-		local fr = State.raw[t.name]
-		local cur = getFrac(t.page)
+	elseif t.ready and Mem.ready then
+		local fr = Mem.S.raw[t.name]
+		local cur = Mem.get(t.page)
 		if fr and cur and math.abs(cur - fr) > 3 then
-			task.spawn(function() setScroll(t.page, fr) end)
+			task.spawn(function() Mem.set(t.page, fr) end)
 		end
 	end
 	t.page.Position = UDim2.fromOffset(0, 14)
@@ -517,30 +503,10 @@ local function CreateTab(name, icon)
 
 	tab.btn, tab.bar, tab.page, tab.icon, tab.label = btn, bar, page, tabIcon, tabLabel
 	tab.name = name
-	local lastY, lastT, guarding = 0, 0, false
 	page:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-		if guarding or not uiReady then return end
-		local y, now = page.CanvasPosition.Y, os.clock()
-		-- الصفحة كانت واقفة وقفزت فجأة لفوق بعد ضغطة = ارجعها لمكانها
-		if tab.ready and lastY > 40 and y < 1 and (now - lastT) > 0.08 and (now - lastTap) < 2 then
-			guarding = true
-			local target = lastY
-			task.spawn(function()
-				for _ = 1, 12 do
-					page.CanvasPosition = Vector2.new(0, target)
-					task.wait(0.05)
-					if math.abs(page.CanvasPosition.Y - target) < 2 then break end
-				end
-				lastY, lastT = page.CanvasPosition.Y, os.clock()
-				guarding = false
-			end)
-			return
-		end
-		lastY, lastT = y, now
-		if tab.ready then
-			local fr = getFrac(page)
-			if fr then State.raw[name] = fr end
-		end
+		if not Mem.ready or not tab.ready then return end
+		local v = Mem.get(page)
+		if v then Mem.S.raw[name] = v end
 	end)
 	table.insert(allTabs, tab)
 	btn.MouseButton1Click:Connect(function() SelectTab(tab) end)
@@ -691,7 +657,7 @@ local function CreateTab(name, icon)
 				page.ScrollingEnabled = false
 				setFromX(i.Position.X)
 				i.Changed:Connect(function()
-					if i.UserInputState == Enum.UserInputState.End then
+					if i.UserInputState == Enum.UserInputMem.S.End then
 						dragging = false
 						page.ScrollingEnabled = true
 					end
@@ -2422,37 +2388,33 @@ local function SendChat(msg)
 	end
 end
 
--- (ما نحتاج تثبيت: النافذة ما تنضغط لصفر بعد الحين)
-local function holdScroll() end
 
 local function OpenMain()
 	isOpen = true
-	State.open = true
+	Mem.S.open = true
 	Main.Visible = true
 	MainScale.Scale = 0.01
-	uiReady = false
-	holdScroll(0.6)
+	Mem.ready = false
 	Tw(MainScale, 0.45, {Scale = baseScale()}, Enum.EasingStyle.Back)
 	-- بعد ما تنفتح النافذة بالكامل رجّع السكرول لمكانه (كان يضيع وهي تنفتح/تنقفل)
 	task.delay(0.62, function()
 		if not isOpen then return end
-		uiReady = true
-		local cur = currentTab
+		Mem.ready = true
+		local cur = Mem.cur
 		if cur then
-			local fr = State.raw[cur.name]
-			if fr and fr > 0 then setScroll(cur.page, fr) end
+			local fr = Mem.S.raw[cur.name]
+			if fr and fr > 0 then Mem.set(cur.page, fr) end
 			cur.ready = true
 		end
-		local sf = State.sideraw
-		if sf and sf > 0 then setScroll(Sidebar, sf) end
+		local sf = Mem.S.sideraw
+		if sf and sf > 0 then Mem.set(Sidebar, sf) end
 	end)
 end
 local function CloseMain()
-	snapshotScroll()
-	uiReady = false
-	holdScroll(0.3)
+	Mem.snap()
+	Mem.ready = false
 	isOpen = false
-	State.open = false
+	Mem.S.open = false
 	local tw = Tw(MainScale, 0.25, {Scale = 0.01}, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 	tw.Completed:Connect(function() if not isOpen then Main.Visible = false end end)
 end
@@ -2464,7 +2426,7 @@ do
 	TopBar.InputBegan:Connect(function(i)
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
 			dragging, dStart, sPos = true, false, i.Position, Main.Position
-			i.Changed:Connect(function() if i.UserInputState == Enum.UserInputState.End then dragging = false end end)
+			i.Changed:Connect(function() if i.UserInputState == Enum.UserInputMem.S.End then dragging = false end end)
 		end
 	end)
 	table.insert(conns, UIS.InputChanged:Connect(function(i)
@@ -2478,7 +2440,7 @@ end
 ------------------------------------------------------------------
 -- ORCA button (صورة + حلقات برتقالية + كلمة ORCA)  <<< الزر الجديد
 ------------------------------------------------------------------
-local Orb, OrbScale
+local Orb
 do
 	local IMAGE_ID     = 118123159790059  -- ID ديال الصورة (غيره لو تبي صورة ثانية)
 	local BUTTON_SCALE = 0.55             -- حجم الزر (0.5 صغير / 0.8 كبير)
@@ -2499,14 +2461,14 @@ do
 		Name = "OrcaOrb", Size = UDim2.fromOffset(140, 175), Position = UDim2.new(0, 20, 0.4, 0),
 		BackgroundTransparency = 1, Parent = Gui,
 	})
-	OrbScale = New("UIScale", {Scale = BUTTON_SCALE, Parent = Orb})
-	if State.orbPos then
-		local o = State.orbPos
+	Mem.orbScale = New("UIScale", {Scale = BUTTON_SCALE, Parent = Orb})
+	if Mem.S.orbPos then
+		local o = Mem.S.orbPos
 		Orb.Position = UDim2.new(o[1], o[2], o[3], o[4])
 	end
 	Orb:GetPropertyChangedSignal("Position"):Connect(function()
 		local p = Orb.Position
-		State.orbPos = {p.X.Scale, p.X.Offset, p.Y.Scale, p.Y.Offset}
+		Mem.S.orbPos = {p.X.Scale, p.X.Offset, p.Y.Scale, p.Y.Offset}
 	end)
 
 	local rings = {
@@ -2574,7 +2536,7 @@ do
 		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
 			dragging, moved, dStart, sPos = true, false, i.Position, Orb.Position
 			i.Changed:Connect(function()
-				if i.UserInputState == Enum.UserInputState.End then
+				if i.UserInputState == Enum.UserInputMem.S.End then
 					dragging = false
 					if not moved then ToggleMain() end
 				end
@@ -2622,17 +2584,19 @@ do
 	end))
 end
 
-local startTab = T.Owners
-for _, o in ipairs(allTabs) do
-	if o.name == State.tab then startTab = o end
+do
+	local startTab = T.Owners
+	for _, o in ipairs(allTabs) do
+		if o.name == Mem.S.tab then startTab = o end
+	end
+	SelectTab(startTab)
 end
-SelectTab(startTab)
-if State.open then task.delay(0.7, OpenMain) end
+if Mem.S.open then task.delay(0.7, OpenMain) end
 -- ظهور الزر بأنيميشن (من صفر لحجمه)
 do
-	local target = OrbScale.Scale
-	OrbScale.Scale = 0
-	Tw(OrbScale, 0.6, {Scale = target}, Enum.EasingStyle.Back)
+	local target = Mem.orbScale.Scale
+	Mem.orbScale.Scale = 0
+	Tw(Mem.orbScale, 0.6, {Scale = target}, Enum.EasingStyle.Back)
 end
 Notify("uiogunio / orca", "Loaded. Tap the orca orb to open the hub.", C.mars)
 task.spawn(function()
