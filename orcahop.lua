@@ -70,6 +70,7 @@ local Env = (getgenv and getgenv()) or _G
 Env.OrcaState = Env.OrcaState or {}
 local State = Env.OrcaState
 State.scroll = State.scroll or {}
+local uiReady = false -- true = النافذة مفتوحة بالكامل (بس وقتها نحفظ مكان السكرول)
 
 -- وقت آخر ضغطة (تستخدمها حماية السكرول عشان الصفحة ما ترجع لفوق لما تضغط زر)
 local lastTap = 0
@@ -392,20 +393,8 @@ local Sidebar = New("ScrollingFrame", {
 	New("UIPadding", {PaddingTop = UDim.new(0, 8), PaddingLeft = UDim.new(0, 7), PaddingRight = UDim.new(0, 7), PaddingBottom = UDim.new(0, 8)}),
 })
 Corner(Sidebar, 12)
-local sideReady = false
 Sidebar:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-	if sideReady then State.side = Sidebar.CanvasPosition.Y end
-end)
-task.spawn(function()
-	local y = State.side
-	if y and y > 0 then
-		for _ = 1, 20 do
-			Sidebar.CanvasPosition = Vector2.new(0, y)
-			if math.abs(Sidebar.CanvasPosition.Y - y) < 2 then break end
-			task.wait(0.1)
-		end
-	end
-	sideReady = true
+	if uiReady then State.side = Sidebar.CanvasPosition.Y end
 end)
 
 local Content = New("Frame", {
@@ -419,6 +408,37 @@ Corner(Content, 12)
 ------------------------------------------------------------------
 local allTabs = {}
 local tabOrder = 0
+local currentTab
+
+-- يحط السكرول في مكانه (ينتظر لين النافذة تنفتح وتتحسب أحجامها)
+local function setScroll(frame, y)
+	for _ = 1, 100 do
+		if uiReady then
+			frame.CanvasPosition = Vector2.new(0, y)
+			task.wait(0.05)
+			local maxY = frame.AbsoluteCanvasSize.Y - frame.AbsoluteWindowSize.Y
+			if math.abs(frame.CanvasPosition.Y - y) < 2 or (maxY > 1 and frame.CanvasPosition.Y >= maxY - 2) then
+				return true
+			end
+		else
+			task.wait(0.1)
+		end
+	end
+	return false
+end
+
+-- يحفظ مكان السكرول قبل ما النافذة تتقفل (لأنها وهي تتقفل تنضغط الأحجام وتنمسح المواقع)
+local function snapshotScroll()
+	if not uiReady then return end
+	for _, t in ipairs(allTabs) do
+		if t.ready then State.scroll[t.name] = t.page.CanvasPosition.Y end
+	end
+	State.side = Sidebar.CanvasPosition.Y
+end
+Gui.Destroying:Connect(function()
+	snapshotScroll()
+	uiReady = false
+end)
 
 local function SelectTab(t)
 	for _, o in ipairs(allTabs) do
@@ -430,20 +450,22 @@ local function SelectTab(t)
 		recolor(o.icon, on and C.mars2 or C.sub)
 	end
 	State.tab = t.name
+	currentTab = t
 	if not t.restored then
 		t.restored = true
 		local y = State.scroll[t.name]
 		if y and y > 0 then
 			task.spawn(function()
-				for _ = 1, 20 do
-					t.page.CanvasPosition = Vector2.new(0, y)
-					if math.abs(t.page.CanvasPosition.Y - y) < 2 then break end
-					task.wait(0.1)
-				end
+				setScroll(t.page, y)
 				t.ready = true
 			end)
 		else
 			t.ready = true
+		end
+	elseif t.ready and uiReady then
+		local y = State.scroll[t.name]
+		if y and y > 0 and math.abs(t.page.CanvasPosition.Y - y) > 2 then
+			task.spawn(function() setScroll(t.page, y) end)
 		end
 	end
 	t.page.Position = UDim2.fromOffset(0, 14)
@@ -481,7 +503,7 @@ local function CreateTab(name, icon)
 	tab.name = name
 	local lastY, lastT, guarding = 0, 0, false
 	page:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-		if guarding then return end
+		if guarding or not uiReady then return end
 		local y, now = page.CanvasPosition.Y, os.clock()
 		-- الصفحة كانت واقفة وقفزت فجأة لفوق بعد ضغطة = ارجعها لمكانها
 		if tab.ready and lastY > 40 and y < 1 and (now - lastT) > 0.08 and (now - lastTap) < 2 then
@@ -2386,9 +2408,25 @@ local function OpenMain()
 	State.open = true
 	Main.Visible = true
 	MainScale.Scale = 0
+	uiReady = false
 	Tw(MainScale, 0.45, {Scale = baseScale()}, Enum.EasingStyle.Back)
+	-- بعد ما تنفتح النافذة بالكامل رجّع السكرول لمكانه (كان يضيع وهي تنفتح/تنقفل)
+	task.delay(0.55, function()
+		if not isOpen then return end
+		uiReady = true
+		local cur = currentTab
+		if cur then
+			local y = State.scroll[cur.name]
+			if y and y > 0 then setScroll(cur.page, y) end
+			cur.ready = true
+		end
+		local sy = State.side
+		if sy and sy > 0 then setScroll(Sidebar, sy) end
+	end)
 end
 local function CloseMain()
+	snapshotScroll()
+	uiReady = false
 	isOpen = false
 	State.open = false
 	local tw = Tw(MainScale, 0.25, {Scale = 0}, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
