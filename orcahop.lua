@@ -1867,7 +1867,7 @@ table.insert(conns, RunService.Heartbeat:Connect(function()
 end))
 
 ------------------------------------------------------------------
--- BANG & BANG FACE (تم تعديل الـ Bang العادي ليلحق الظهر تماماً كالـ Face Bang)
+-- BANG & BANG FACE
 ------------------------------------------------------------------
 local bangPicker = T.Bang:PlayerPicker()
 local bangBtn, faceBtn
@@ -1876,6 +1876,7 @@ local bangTarget, bangAway = nil, false
 
 local bangAnimTrack = nil
 local bangSpeed, faceSpeed = 5, 5
+local bangSize, faceSize = 3, 3 -- القيم الافتراضية 3
 local originalAnimateScript = nil
 
 local function applyStance(active)
@@ -1978,22 +1979,34 @@ faceBtn = T.Bang:ColorToggle("BANG FACE", function(state)
 		Notify("BANG FACE Activated  " .. p.Name, "", C.mars, "user")
 	else
 		stopBangAnim()
-		if not bangOn then bangTarget, bangAway = nil, false end
+		if not faceOn then bangTarget, bangAway = nil, false end
 	end
 end)
 
-local _, setBangSpeed = T.Bang:Slider("speed bang", 0, 100, 5, function(v) 
+local _, setBangSpeed = T.Bang:Slider("speed bang", 0, 300, 5, function(v) 
 	bangSpeed = v 
 	if bangAnimTrack and bangOn then bangAnimTrack:AdjustSpeed(v) end
 end)
-local _, setFaceSpeed = T.Bang:Slider("speed face bang", 0, 100, 5, function(v) 
+local _, setFaceSpeed = T.Bang:Slider("speed face bang", 0, 300, 5, function(v) 
 	faceSpeed = v 
 	if bangAnimTrack and faceOn then bangAnimTrack:AdjustSpeed(v) end
+end)
+
+-- فاصل صغير مكتوب تحته size
+T.Bang:Header("size", true)
+
+local _, setBangSizeVal = T.Bang:Slider("size bang", 1, 10, 3, function(v)
+	bangSize = v
+end)
+local _, setFaceSizeVal = T.Bang:Slider("size face bang", 1, 10, 3, function(v)
+	faceSize = v
 end)
 
 T.Bang:SmallButton("reset", Color3.fromRGB(225, 50, 60), function()
 	setBangSpeed(5)
 	setFaceSpeed(5)
+	setBangSizeVal(3)
+	setFaceSizeVal(3)
 end)
 
 local bangAnimLoop = 0
@@ -2009,18 +2022,18 @@ table.insert(conns, RunService.Heartbeat:Connect(function(dt)
 		if tRoot and mRoot and myHum then
 			local speed = bangOn and bangSpeed or faceSpeed
 			bangAnimLoop = bangAnimLoop + (dt * (speed * 2.5))
-			local offsetZ = math.sin(bangAnimLoop) * 1.0
 			
 			mRoot.AssemblyLinearVelocity = Vector3.zero
 			mRoot.AssemblyAngularVelocity = Vector3.zero
 			
-			-- استخدام Head أو جزء أساسي ديناميكي للـ Bang ليلحق الظهر تماماً حتى لو كان يرقص أو نايم
 			if bangOn then
+				local offsetZ = math.sin(bangAnimLoop) * (bangSize * 0.45)
 				local targetPart = targetChar:FindFirstChild("UpperTorso") or targetChar:FindFirstChild("Torso") or tRoot
-				mRoot.CFrame = targetPart.CFrame * CFrame.new(0, 0, 1.1 + offsetZ)
+				mRoot.CFrame = targetPart.CFrame * CFrame.new(0, 0, 1.3 + offsetZ)
 			elseif faceOn and tHead then
+				local offsetZ = math.sin(bangAnimLoop) * (faceSize * 0.28)
 				myHum.Sit = true
-				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.5, -0.9 + (offsetZ * 0.5)) * CFrame.Angles(0, math.pi, 0)
+				mRoot.CFrame = tHead.CFrame * CFrame.new(0, 0.5, -0.9 + offsetZ) * CFrame.Angles(0, math.pi, 0)
 			end
 		end
 	end
