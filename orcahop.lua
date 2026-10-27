@@ -2318,19 +2318,28 @@ T.Misc:Button("Reset Character", function()
 	local h = getHum()
 	if h then resetting = true h.Health = 0 end
 end)
+-- [FIXED] Rejoin: always goes back to the SAME server (same JobId), retries if the teleport fails,
+-- and never falls back to a random/new server.
 T.Misc:Button("Rejoin", function()
 	local TS = game:GetService("TeleportService")
 	Notify("Rejoin", "Rejoining the same server...")
-	if #Players:GetPlayers() > 1 then
-		local failConn
-		failConn = TS.TeleportInitFailed:Connect(function()
-			failConn:Disconnect()
-			pcall(function() TS:Teleport(game.PlaceId, LP) end)
-		end)
-		TS:TeleportToPlaceInstance(game.PlaceId, game.JobId, LP)
-	else
-		TS:Teleport(game.PlaceId, LP)
+	local tries = 0
+	local failConn
+	local function go()
+		tries += 1
+		pcall(function() TS:TeleportToPlaceInstance(game.PlaceId, game.JobId, LP) end)
 	end
+	failConn = TS.TeleportInitFailed:Connect(function(plr)
+		if plr ~= LP then return end
+		if tries < 5 then
+			task.wait(1.5)
+			go()
+		else
+			failConn:Disconnect()
+			Notify("Rejoin", "Could not rejoin the same server", C.mars2)
+		end
+	end)
+	go()
 end)
 T.Misc:Button("Server Hop", function()
 	Notify("Server Hop", "Searching for a server...")
@@ -2436,16 +2445,17 @@ local function holdScroll(dur)
 	end)
 end
 
+-- [FIXED] الفتح والإخفاء: الواجهة ما تصغر لـ Scale = 0 بعد الآن، بس Visible = true / false
+-- والسكربت يظل شغال والسكرول يبقى مكانه.
 local function OpenMain()
 	isOpen = true
 	State.open = true
-	Main.Visible = true
-	MainScale.Scale = 0
 	uiReady = false
-	holdScroll(0.6)
-	Tw(MainScale, 0.45, {Scale = baseScale()}, Enum.EasingStyle.Back)
-	-- بعد ما تنفتح النافذة بالكامل رجّع السكرول لمكانه (كان يضيع وهي تنفتح/تنقفل)
-	task.delay(0.62, function()
+	MainScale.Scale = baseScale()
+	Main.Visible = true
+	holdScroll(0.3)
+	-- بعد ما تظهر النافذة رجّع السكرول لمكانه
+	task.delay(0.1, function()
 		if not isOpen then return end
 		uiReady = true
 		local cur = currentTab
@@ -2461,11 +2471,9 @@ end
 local function CloseMain()
 	snapshotScroll()
 	uiReady = false
-	holdScroll(0.3)
 	isOpen = false
 	State.open = false
-	local tw = Tw(MainScale, 0.25, {Scale = 0}, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-	tw.Completed:Connect(function() if not isOpen then Main.Visible = false end end)
+	Main.Visible = false
 end
 local function ToggleMain() if isOpen then CloseMain() else OpenMain() end end
 CloseBtn.MouseButton1Click:Connect(CloseMain)
