@@ -892,7 +892,7 @@ local function CreateTab(name, icon)
 			Visible = false, ClipsDescendants = true, LayoutOrder = 2, Parent = holder,
 		}, {
 			New("UIListLayout", {Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder}),
-			New("UIPadding", {PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 6)}),
+			New("UIPadding", {PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 8)}),
 		})
 		Corner(list, 10)
 
@@ -2388,7 +2388,7 @@ end))
 		CanvasSize = UDim2.new(), Parent = holder,
 	}, {
 		New("UIListLayout", {Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder}),
-		New("UIPadding", {PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 6)}),
+		New("UIPadding", {PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 8)}),
 	})
 	Corner(list, 10)
 	New("UIStroke", {Color = C.line, Thickness = 1, Parent = list})
@@ -2686,7 +2686,7 @@ end))
 		local msg = box.Text:match("^%s*(.-)%s*$")
 		if msg == "" then return end
 		if not req then
-			Notify("Public chat", "Your executor can't send messages", C.mars2, "warn")
+			Notify("chat", "Your executor can't send messages", C.mars2, "warn")
 			return
 		end
 		if os.clock() - lastSend < 0.8 then return end
@@ -2705,7 +2705,7 @@ end))
 				Body = HttpService:JSONEncode({c = cid, i = LP.UserId, n = LP.Name, d = LP.DisplayName, m = msg}),
 			})
 			if not (ok and r and (r.Success or r.StatusCode == 200)) then
-				Notify("Public chat", "Message may not have been sent", C.mars2, "warn")
+				Notify("chat", "Message may not have been sent", C.mars2, "warn")
 			end
 		end)
 	end
@@ -2855,7 +2855,7 @@ end)()
 	local hdr = tab:Header("Private chat", true)
 	local statusL = Label({
 		Text = "connecting", TextSize = 10, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Right,
-		Size = UDim2.new(1, 0, 0, 16), Parent = hdr,
+		Size = UDim2.new(1, -40, 0, 16), Parent = hdr,
 	})
 
 	local picker = tab:PlayerPicker(function(p)
@@ -2880,13 +2880,45 @@ end)()
 		CanvasSize = UDim2.new(), Parent = holder,
 	}, {
 		New("UIListLayout", {Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder}),
-		New("UIPadding", {PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 6)}),
+		New("UIPadding", {PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 8)}),
 	})
 	Corner(list, 10)
 	New("UIStroke", {Color = C.line, Thickness = 1, Parent = list})
 	local function scrollBottom()
 		list.CanvasPosition = Vector2.new(0, math.max(0, list.AbsoluteCanvasSize.Y))
 	end
+
+	-- زر التكبير / التصغير (نفس زر Public chat)
+	local maxBtn = New("TextButton", {
+		Text = "", Size = UDim2.fromOffset(28, 24), Position = UDim2.new(1, -28, 0.5, -12),
+		BackgroundColor3 = C.card, AutoButtonColor = false, ZIndex = 3, Parent = hdr,
+	})
+	Corner(maxBtn, 8)
+	local maxStroke = New("UIStroke", {Color = C.mars, Thickness = 1.2, Parent = maxBtn})
+	local icMax = Icon("max", maxBtn, 14, C.mars2)
+	icMax.AnchorPoint = Vector2.new(0.5, 0.5)
+	icMax.Position = UDim2.fromScale(0.5, 0.5)
+	local icMin = Icon("min", maxBtn, 14, C.mars2)
+	icMin.AnchorPoint = Vector2.new(0.5, 0.5)
+	icMin.Position = UDim2.fromScale(0.5, 0.5)
+	icMin.Visible = false
+	maxBtn.MouseEnter:Connect(function() Tw(maxStroke, 0.15, {Color = C.mars2, Thickness = 2}) end)
+	maxBtn.MouseLeave:Connect(function() Tw(maxStroke, 0.15, {Color = C.mars, Thickness = 1.2}) end)
+	local expanded = false
+	local function setExpanded(v)
+		expanded = v
+		icMax.Visible = not v
+		icMin.Visible = v
+		if v then
+			Sidebar.Visible = false
+			Tw(Content, 0.3, {Position = UDim2.fromOffset(10, 54), Size = UDim2.fromOffset(540, 296)}, Enum.EasingStyle.Quint)
+		else
+			Sidebar.Visible = true
+			Tw(Content, 0.3, {Position = UDim2.fromOffset(162, 54), Size = UDim2.fromOffset(388, 296)}, Enum.EasingStyle.Quint)
+		end
+		task.delay(0.35, scrollBottom)
+	end
+	maxBtn.MouseButton1Click:Connect(function() setExpanded(not expanded) end)
 
 	local inputWrap = New("Frame", {
 		Size = UDim2.new(1, -52, 0, 40), Position = UDim2.new(0, 0, 1, -40), BackgroundColor3 = C.card, Parent = holder,
@@ -2960,11 +2992,11 @@ end)()
 		local msg = box.Text:match("^%s*(.-)%s*$")
 		if msg == "" then return end
 		if not sel then
-			Notify("Private chat", "Select a player first", C.mars2, "warn")
+			Notify("private chat", "Select a player first", C.mars2, "warn")
 			return
 		end
 		if not req then
-			Notify("Private chat", "Your executor can't send messages", C.mars2, "warn")
+			Notify("private chat", "Your executor can't send messages", C.mars2, "warn")
 			return
 		end
 		if os.clock() - lastSend < 0.8 then return end
@@ -2988,7 +3020,7 @@ end)()
 				Body = body,
 			})
 			if not (ok and r and (r.Success or r.StatusCode == 200)) then
-				Notify("Private chat", "Message may not have been sent", C.mars2, "warn")
+				Notify("private chat", "Message may not have been sent", C.mars2, "warn")
 			end
 		end)
 	end
