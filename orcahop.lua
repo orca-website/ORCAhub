@@ -251,12 +251,26 @@ local function Icon(name, parent, size, color)
 		O(8, 10.5, 2.2)
 		O(12, 10.5, 2.2)
 		O(16, 10.5, 2.2)
+	elseif name == "dm" then
+		Box(11, 10.5, 18, 13, 2.6, 1.8)
+		L(3.2, 5.6, 11, 11.4, 1.8)
+		L(11, 11.4, 18.8, 5.6, 1.8)
+		R(18.5, 19, 8.4, 6.4, 0, 1.6)
+		Ring(18.5, 14.6, 5, 1.7)
+		R(18.5, 19, 1.6, 2.6, 0, 0.8, Color3.fromRGB(14, 8, 14))
 	elseif name == "send" then
 		L(22, 2, 15, 22, 1.8)
 		L(15, 22, 11, 13, 1.8)
 		L(11, 13, 2, 9, 1.8)
 		L(2, 9, 22, 2, 1.8)
 		L(22, 2, 11, 13, 1.8)
+	elseif name == "dmsend" then
+		L(4, 20, 19, 5, 2.4)
+		L(19, 5, 9.5, 5.5, 2.4)
+		L(19, 5, 18.5, 14.5, 2.4)
+		L(2.5, 14, 6.5, 14, 1.6)
+		L(7, 21.5, 10, 21.5, 1.6)
+		O(21.5, 21, 2.2)
 	elseif name == "max" then
 		L(14, 10, 21, 3, 2)
 		L(15, 3, 21, 3, 2)
@@ -319,7 +333,7 @@ local NotifHolder = New("Frame", {
 	}),
 })
 
-local function Notify(title, content, color, icon, fancy)
+local function Notify(title, content, color, icon, fancy, dur)
 	color = color or C.mars
 	local wrap = New("Frame", {Size = UDim2.new(1, 0, 0, 58), BackgroundTransparency = 1, Parent = NotifHolder})
 	local card = New("Frame", {
@@ -351,7 +365,7 @@ local function Notify(title, content, color, icon, fancy)
 	Label({Text = content, TextSize = 12, TextColor3 = C.sub, TextWrapped = true, TextYAlignment = Enum.TextYAlignment.Top,
 		Size = UDim2.new(1, -(tx + 6), 0, 28), Position = UDim2.fromOffset(tx, 26), Parent = card})
 	Tw(card, 0.35, {Position = UDim2.new(0, 0, 0, 0)}, Enum.EasingStyle.Back)
-	task.delay(3, function()
+	task.delay(dur or 3, function()
 		Tw(card, 0.3, {Position = UDim2.new(1, 300, 0, 0)})
 		task.wait(0.35)
 		wrap:Destroy()
@@ -364,6 +378,7 @@ end
 local function baseScale()
 	local cam = workspace.CurrentCamera
 	local v = cam and cam.ViewportSize or Vector2.new(1280, 720)
+	if Mem.S.big then return math.clamp(math.min(v.X / 580, v.Y / 375), 0.55, 1.6) end
 	return math.clamp(math.min(v.X / 620, v.Y / 420), 0.55, 1)
 end
 
@@ -834,7 +849,7 @@ local function CreateTab(name, icon)
 		return obj
 	end
 
-	function tab:PlayerPicker(onPick)
+	function tab:PlayerPicker(onPick, filter, emptyText)
 		local selected, open, targetH = nil, false, 0
 		local pick, setOpen, refresh
 		local idleText = "tap the arrow to see who is in the server"
@@ -877,7 +892,7 @@ local function CreateTab(name, icon)
 			Visible = false, ClipsDescendants = true, LayoutOrder = 2, Parent = holder,
 		}, {
 			New("UIListLayout", {Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder}),
-			New("UIPadding", {PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 8)}),
+			New("UIPadding", {PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 6)}),
 		})
 		Corner(list, 10)
 
@@ -887,7 +902,7 @@ local function CreateTab(name, icon)
 			end
 			local n = 0
 			for _, p in ipairs(Players:GetPlayers()) do
-				if p ~= LP then
+				if p ~= LP and (not filter or filter(p)) then
 					n += 1
 					local it = New("TextButton", {
 						Size = UDim2.new(1, 0, 0, 38), BackgroundColor3 = C.panel, Text = "", AutoButtonColor = false,
@@ -899,6 +914,14 @@ local function CreateTab(name, icon)
 						Image = "rbxthumb://type=AvatarHeadShot&id=" .. p.UserId .. "&w=48&h=48", Parent = it,
 					})
 					Corner(th, 14)
+					if filter then
+						local od = New("Frame", {
+							Size = UDim2.fromOffset(10, 10), Position = UDim2.fromOffset(24, 23),
+							BackgroundColor3 = Color3.fromRGB(46, 200, 110), BorderSizePixel = 0, ZIndex = 3, Parent = it,
+						})
+						Corner(od, 5)
+						New("UIStroke", {Color = C.panel, Thickness = 1.5, Parent = od})
+					end
 					Label({Text = p.DisplayName, Font = Enum.Font.GothamBold, TextSize = 12, Size = UDim2.new(1, -50, 0, 18),
 						Position = UDim2.fromOffset(42, 3), TextTruncate = Enum.TextTruncate.AtEnd, Parent = it})
 					Label({Text = "@" .. p.Name, TextSize = 10, TextColor3 = C.sub, Size = UDim2.new(1, -50, 0, 14),
@@ -909,7 +932,7 @@ local function CreateTab(name, icon)
 				end
 			end
 			if n == 0 then
-				Label({Text = "No other players in the server", TextSize = 12, TextColor3 = C.sub,
+				Label({Text = emptyText or "No other players in the server", TextSize = 12, TextColor3 = C.sub,
 					Size = UDim2.new(1, 0, 0, 30), TextXAlignment = Enum.TextXAlignment.Center, Parent = list})
 			end
 			targetH = math.clamp(math.max(n, 1) * 42 + 12, 50, 200)
@@ -952,7 +975,7 @@ local function CreateTab(name, icon)
 			if open then task.delay(0.3, refresh) end
 		end))
 
-		return {Get = function() return selected end}
+		return {Get = function() return selected end, Avatar = avatar}
 	end
 
 	function tab:Owner(label, value, icon)
@@ -1029,7 +1052,8 @@ local T = {
 	Teleport    = CreateTab("Teleport", "pin"),
 	Bang        = CreateTab("bang", "people"),
 	Smla        = CreateTab("smla", "eye"),
-	Chat        = CreateTab("chat", "send"),
+	Chat        = CreateTab("Public chat", "send"),
+	Private     = CreateTab("Private chat", "dm"),
 	Accessories = CreateTab("Accessories", "hat"),
 	Bundles     = CreateTab("Bundles", "people"),
 	Antidotes   = CreateTab("Antidotes", "pill"),
@@ -2348,7 +2372,7 @@ end))
 	page.ScrollingEnabled = false
 	page.ScrollBarThickness = 0
 
-	local hdr = T.Chat:Header("chat by orca", true)
+	local hdr = T.Chat:Header("Public chat", true)
 	local statusL = Label({
 		Text = "connecting", TextSize = 10, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Right,
 		Size = UDim2.new(1, -40, 0, 16), Parent = hdr,
@@ -2363,8 +2387,8 @@ end))
 		ScrollBarThickness = 3, ScrollBarImageColor3 = C.mars, AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		CanvasSize = UDim2.new(), Parent = holder,
 	}, {
-		New("UIListLayout", {Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder}),
-		New("UIPadding", {PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 8)}),
+		New("UIListLayout", {Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder}),
+		New("UIPadding", {PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 6)}),
 	})
 	Corner(list, 10)
 	New("UIStroke", {Color = C.line, Thickness = 1, Parent = list})
@@ -2440,6 +2464,20 @@ end))
 	-- الرسائل
 	local rows, rowOrder, seen = {}, 0, {}
 
+	-- حالة الاتصال (اخضر = متصل ويشغل السكربت / رمادي = خارج)
+	local ON, OFF = Color3.fromRGB(46, 200, 110), Color3.fromRGB(125, 115, 125)
+	local PING, WINDOW = 150, 330
+	local presence, sentAt, skew, dotList = {}, {}, 0, {}
+	local unread, counting = 0, false
+
+	local function isOnline(id)
+		local n = tonumber(id)
+		if not n then return false end
+		if n == LP.UserId then return true end
+		local t = presence[n]
+		return t ~= nil and ((os.time() - skew) - t) < WINDOW
+	end
+
 	local function colorFor(id, name)
 		local n = tonumber(id)
 		if not n then
@@ -2449,47 +2487,115 @@ end))
 		return Color3.fromHSV((n * 0.61803398875) % 1, 0.55, 1)
 	end
 
-	local function addMsg(d)
-		local name = tostring(d.d or d.u or "?"):sub(1, 30)
-		local uname = d.n and ("@" .. tostring(d.n):sub(1, 30)) or ""
+	local function esc(t)
+		return (tostring(t):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
+	end
+	local function hex(c)
+		return string.format("#%02x%02x%02x", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5))
+	end
+
+	-- صف رسالة صغير (صورة + اسم + يوزر + نص)، يستخدمه الشات والشات الخاص
+	local function buildRow(parent, d, order)
+		local name = tostring(d.d or d.u or "?"):sub(1, 24)
+		local uname = d.n and ("@" .. tostring(d.n):sub(1, 24)) or ""
 		local col = colorFor(d.i, name)
-		rowOrder += 1
 		local row = New("Frame", {
 			Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = C.panel,
-			LayoutOrder = rowOrder, Parent = list,
+			LayoutOrder = order, Parent = parent,
 		}, {
-			New("UIPadding", {PaddingTop = UDim.new(0, 7), PaddingBottom = UDim.new(0, 7), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8)}),
-			New("UISizeConstraint", {MinSize = Vector2.new(0, 50)}),
+			New("UIPadding", {PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 2), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4)}),
+			New("UISizeConstraint", {MinSize = Vector2.new(0, 22)}),
 		})
-		Corner(row, 10)
-		New("UIStroke", {Color = col, Thickness = 1, Transparency = 0.55, Parent = row})
+		Corner(row, 6)
+		New("UIStroke", {Color = col, Thickness = 1, Transparency = 0.65, Parent = row})
 		local av = New("ImageLabel", {
-			Size = UDim2.fromOffset(34, 34), BackgroundColor3 = C.bg,
+			Size = UDim2.fromOffset(18, 18), Position = UDim2.fromOffset(0, 1), BackgroundColor3 = C.bg,
 			Image = d.i and ("rbxthumb://type=AvatarHeadShot&id=" .. tostring(d.i) .. "&w=48&h=48") or "", Parent = row,
 		})
-		Corner(av, 17)
-		New("UIStroke", {Color = col, Thickness = 1.5, Parent = av})
+		Corner(av, 9)
+		New("UIStroke", {Color = col, Thickness = 1, Parent = av})
+		local dot = New("Frame", {
+			Size = UDim2.fromOffset(7, 7), Position = UDim2.fromOffset(12, 13),
+			BackgroundColor3 = isOnline(d.i) and ON or OFF, BorderSizePixel = 0, ZIndex = 3, Parent = row,
+		})
+		Corner(dot, 4)
+		New("UIStroke", {Color = C.panel, Thickness = 1.2, Parent = dot})
 		local colF = New("Frame", {
-			Size = UDim2.new(1, -44, 0, 0), Position = UDim2.fromOffset(44, 0), AutomaticSize = Enum.AutomaticSize.Y,
+			Size = UDim2.new(1, -24, 0, 0), Position = UDim2.fromOffset(24, 0), AutomaticSize = Enum.AutomaticSize.Y,
 			BackgroundTransparency = 1, Parent = row,
 		}, {
-			New("UIListLayout", {Padding = UDim.new(0, 1), SortOrder = Enum.SortOrder.LayoutOrder}),
+			New("UIListLayout", {Padding = UDim.new(0, 0), SortOrder = Enum.SortOrder.LayoutOrder}),
 		})
-		Label({Text = name, Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = col, Size = UDim2.new(1, 0, 0, 16),
+		local rich = '<font color="' .. hex(col) .. '"><b>' .. esc(name) .. '</b></font>'
+		if uname ~= "" then rich = rich .. '  <font color="#a5949e" size="8">' .. esc(uname) .. '</font>' end
+		local head = Label({Text = rich, TextSize = 9, Size = UDim2.new(1, 0, 0, 11),
 			TextTruncate = Enum.TextTruncate.AtEnd, LayoutOrder = 1, Parent = colF})
-		if uname ~= "" then
-			Label({Text = uname, TextSize = 10, TextColor3 = C.sub, Size = UDim2.new(1, 0, 0, 12),
-				TextTruncate = Enum.TextTruncate.AtEnd, LayoutOrder = 2, Parent = colF})
-		end
-		local msgL = Label({Text = tostring(d.m or ""):sub(1, 200), TextSize = 13, TextWrapped = true,
+		head.RichText = true
+		local msgL = Label({Text = tostring(d.m or ""):sub(1, 200), TextSize = 10, TextWrapped = true,
 			TextYAlignment = Enum.TextYAlignment.Top, Size = UDim2.new(1, 0, 0, 0),
-			AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 3, Parent = colF})
+			AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2, Parent = colF})
 		msgL.RichText = false
-		New("UIPadding", {PaddingTop = UDim.new(0, 3), Parent = msgL})
+		return row, dot
+	end
+	Mem.row, Mem.isOnline, Mem.ON, Mem.OFF = buildRow, isOnline, ON, OFF
 
+	local function addMsg(d)
+		rowOrder += 1
+		local row, dot = buildRow(list, d, rowOrder)
+		table.insert(dotList, {dot = dot, id = d.i})
 		table.insert(rows, row)
 		if #rows > MAX_MSGS then table.remove(rows, 1):Destroy() end
 		task.delay(0.06, scrollBottom)
+	end
+
+	-- استقبال (WebSocket فوري + جلب احتياطي)
+	local function refreshDots()
+		for i = #dotList, 1, -1 do
+			local e = dotList[i]
+			if e.dot.Parent then
+				local target = isOnline(e.id) and ON or OFF
+				if e.dot.BackgroundColor3 ~= target then Tw(e.dot, 0.2, {BackgroundColor3 = target}) end
+			else
+				table.remove(dotList, i)
+			end
+		end
+	end
+
+	-- اشعار الرسائل الجديدة (دائرة حمراء فيها العدد زي انستا)
+	local function makeBadge(parent, pos, size, z)
+		local f = New("Frame", {
+			Size = UDim2.fromOffset(size, size), Position = pos, BackgroundColor3 = Color3.fromRGB(235, 60, 70),
+			BorderSizePixel = 0, Visible = false, ZIndex = z, Parent = parent,
+		})
+		Corner(f, size / 2)
+		New("UIStroke", {Color = C.white, Thickness = 1.5, Transparency = 0.2, Parent = f})
+		local l = Label({
+			Text = "1", Font = Enum.Font.GothamBlack, TextSize = size * 0.6, TextXAlignment = Enum.TextXAlignment.Center,
+			Size = UDim2.fromScale(1, 1), ZIndex = z + 1, Parent = f,
+		})
+		return f, l
+	end
+	Mem.makeBadge = makeBadge
+	local tabBadge, tabBadgeL = makeBadge(T.Chat.btn, UDim2.new(1, -26, 0.5, -9), 18, 5)
+	local orbBadge, orbBadgeL
+	local function showUnread()
+		local txt = unread > 9 and "9+" or tostring(unread)
+		tabBadge.Visible = unread > 0
+		tabBadgeL.Text = txt
+		if not orbBadge then
+			local orb = Gui:FindFirstChild("OrcaOrb")
+			if orb then orbBadge, orbBadgeL = makeBadge(orb, UDim2.fromOffset(100, 10), 30, 10) end
+		end
+		if orbBadge then
+			orbBadge.Visible = unread > 0
+			orbBadgeL.Text = txt
+		end
+	end
+	local function viewing() return isOpen and page.Visible end
+	local function bump()
+		if viewing() then return end
+		unread += 1
+		showUnread()
 	end
 
 	-- استقبال (WebSocket فوري + جلب احتياطي)
@@ -2498,12 +2604,31 @@ end))
 		if type(d) ~= "table" or d.event ~= "message" or not d.id or seen[d.id] then return end
 		seen[d.id] = true
 		local ok, m = pcall(HttpService.JSONDecode, HttpService, d.message or "")
-		if not ok or type(m) ~= "table" or not m.m then return end
+		if not ok or type(m) ~= "table" then return end
+		local stamp = tonumber(d.time)
+		if m.c and sentAt[m.c] and stamp then
+			skew = sentAt[m.c] - stamp
+			sentAt[m.c] = nil
+		end
+		local uid = tonumber(m.i)
+		if uid and stamp then
+			if m.t == "b" then presence[uid] = 0 else presence[uid] = stamp end
+		end
+		if m.t then
+			refreshDots()
+			return
+		end
+		if not m.m then return end
 		if m.c then
 			if seen[m.c] then return end
 			seen[m.c] = true
 		end
 		addMsg(m)
+		refreshDots()
+		if counting and uid ~= LP.UserId then
+			bump()
+			Notify(tostring(m.d or m.n or "?"):sub(1, 24), "Send a message In a public chat", C.mars2, "chat", false, 1)
+		end
 	end
 
 	local since = "10m"
@@ -2528,7 +2653,8 @@ end))
 	task.spawn(function()
 		while Gui.Parent do
 			pcall(poll)
-			task.wait((os.clock() - wsLast < 70) and 15 or 5)
+			counting = true
+			task.wait((os.clock() - wsLast < 70) and 15 or 6)
 		end
 	end)
 
@@ -2560,7 +2686,7 @@ end))
 		local msg = box.Text:match("^%s*(.-)%s*$")
 		if msg == "" then return end
 		if not req then
-			Notify("chat", "Your executor can't send messages", C.mars2, "warn")
+			Notify("Public chat", "Your executor can't send messages", C.mars2, "warn")
 			return
 		end
 		if os.clock() - lastSend < 0.8 then return end
@@ -2569,6 +2695,7 @@ end))
 		msg = msg:sub(1, 200)
 		local cid = LP.UserId .. "-" .. os.time() .. "-" .. math.random(1000, 9999)
 		seen[cid] = true
+		sentAt[cid] = os.time()
 		addMsg({c = cid, i = LP.UserId, n = LP.Name, d = LP.DisplayName, m = msg})
 		task.spawn(function()
 			local ok, r = pcall(req, {
@@ -2578,14 +2705,401 @@ end))
 				Body = HttpService:JSONEncode({c = cid, i = LP.UserId, n = LP.Name, d = LP.DisplayName, m = msg}),
 			})
 			if not (ok and r and (r.Success or r.StatusCode == 200)) then
-				Notify("chat", "Message may not have been sent", C.mars2, "warn")
+				Notify("Public chat", "Message may not have been sent", C.mars2, "warn")
+			end
+		end)
+	end
+	-- نبض الاتصال: كل فترة نبعث "انا متصل" عشان يطلع اخضر عند غيرك
+	local function sendPresence(kind)
+		if not req then return end
+		local cid = LP.UserId .. "-" .. os.time() .. "-" .. math.random(1000, 9999)
+		sentAt[cid] = os.time()
+		pcall(req, {
+			Url = "https://ntfy.sh/" .. TOPIC,
+			Method = "POST",
+			Headers = {["Content-Type"] = "text/plain; charset=utf-8"},
+			Body = HttpService:JSONEncode({t = kind, c = cid, i = LP.UserId, n = LP.Name, d = LP.DisplayName}),
+		})
+	end
+	task.spawn(function()
+		task.wait(1.5)
+		while Gui.Parent do
+			sendPresence("p")
+			task.wait(PING)
+		end
+	end)
+	table.insert(conns, Players.PlayerRemoving:Connect(function(plr)
+		if plr == LP then task.spawn(sendPresence, "b") end
+	end))
+
+	task.spawn(function()
+		local tick = 0
+		while Gui.Parent do
+			if unread > 0 and viewing() then
+				unread = 0
+				showUnread()
+			elseif unread > 0 and not orbBadge then
+				showUnread()
+			end
+			tick += 1
+			if tick % 20 == 0 then refreshDots() end
+			task.wait(0.25)
+		end
+	end)
+
+	sendBtn.MouseButton1Click:Connect(function()
+		Tw(sendScale, 0.08, {Scale = 0.86})
+		task.delay(0.1, function() Tw(sendScale, 0.2, {Scale = 1}, Enum.EasingStyle.Back) end)
+		send()
+	end)
+end)()
+
+------------------------------------------------------------------
+-- PRIVATE CHAT (شات خاص: مشفّر + محفوظ عندك للابد)
+------------------------------------------------------------------
+;(function()
+	local HttpService = game:GetService("HttpService")
+	local SALT1, SALT2 = "orca#dm!7Qx9", "k3$Zp0vL"
+	local FOLDER = "OrcaHub"
+	local req = request or http_request or (syn and syn.request) or (http and http.request)
+	local canFS = (writefile and readfile and isfile) and true or false
+	Mem.S.dmMem = Mem.S.dmMem or {}
+	local ON, OFF = Mem.ON, Mem.OFF
+
+	local tab = T.Private
+	local page = tab.page
+	local sel, selectPartner
+	local convs, dseen, dmDots, rows, rowOrder = {}, {}, {}, {}, 0
+	local unreadBy, notifyOn = {}, false
+
+	-- تشفير بسيط + اسم صندوق وارد خاص لكل شخص
+	local function hash(str)
+		local h1, h2 = 2166136261, 5381
+		for i = 1, #str do
+			local b = str:byte(i)
+			h1 = (bit32.bxor(h1, b) * 16777619) % 4294967296
+			h2 = (h2 * 33 + b) % 4294967296
+		end
+		return string.format("%08x%08x", h1, h2)
+	end
+	local function inbox(uid) return "orcadm_" .. hash(SALT1 .. "|" .. tostring(uid)) end
+	local function keyFor(a, b)
+		a, b = tonumber(a), tonumber(b)
+		if a > b then a, b = b, a end
+		return SALT2 .. a .. ":" .. b
+	end
+	local function encrypt(plain, a, b)
+		local key = keyFor(a, b)
+		local out = {}
+		for i = 1, #plain do
+			local k = key:byte((i - 1) % #key + 1)
+			out[i] = string.format("%02x", bit32.bxor(plain:byte(i), k, (i * 31) % 256))
+		end
+		return table.concat(out)
+	end
+	local function decrypt(hexs, a, b)
+		local key = keyFor(a, b)
+		local out, n = {}, 0
+		for h in hexs:gmatch("%x%x") do
+			n += 1
+			local k = key:byte((n - 1) % #key + 1)
+			out[n] = string.char(bit32.bxor(tonumber(h, 16), k, (n * 31) % 256))
+		end
+		return table.concat(out)
+	end
+
+	-- حفظ المحادثات في ملف (يبقى حتى لو شلت السكربت وشغلته)
+	local function fpath(pid) return FOLDER .. "/dm_" .. LP.UserId .. "_" .. pid .. ".json" end
+	local function loadConv(pid)
+		if convs[pid] then return convs[pid] end
+		local list = {}
+		if canFS then
+			pcall(function()
+				if isfile(fpath(pid)) then
+					local t = HttpService:JSONDecode(readfile(fpath(pid)))
+					if type(t) == "table" then list = t end
+				end
+			end)
+		else
+			list = Mem.S.dmMem[pid] or {}
+			Mem.S.dmMem[pid] = list
+		end
+		local cids = {}
+		for _, m in ipairs(list) do
+			if m.c then cids[m.c] = true end
+		end
+		convs[pid] = {list = list, cids = cids}
+		return convs[pid]
+	end
+	local function saveConv(pid)
+		local cv = convs[pid]
+		if not cv then return end
+		while #cv.list > 200 do table.remove(cv.list, 1) end
+		if canFS then
+			pcall(function()
+				if makefolder and isfolder and not isfolder(FOLDER) then makefolder(FOLDER) end
+				writefile(fpath(pid), HttpService:JSONEncode(cv.list))
+			end)
+		end
+	end
+	local function pushMsg(pid, m)
+		local cv = loadConv(pid)
+		if m.c and cv.cids[m.c] then return false end
+		if m.c then cv.cids[m.c] = true end
+		table.insert(cv.list, m)
+		saveConv(pid)
+		return true
+	end
+
+	-- الواجهة
+	local hdr = tab:Header("Private chat", true)
+	local statusL = Label({
+		Text = "connecting", TextSize = 10, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Right,
+		Size = UDim2.new(1, 0, 0, 16), Parent = hdr,
+	})
+
+	local picker = tab:PlayerPicker(function(p)
+		if selectPartner then selectPartner(p) end
+	end, function(p)
+		return Mem.isOnline(p.UserId)
+	end, "No script users in this server")
+
+	local headDot = New("Frame", {
+		Size = UDim2.fromOffset(12, 12), Position = UDim2.fromOffset(30, 30), BackgroundColor3 = ON,
+		BorderSizePixel = 0, Visible = false, ZIndex = 3, Parent = picker.Avatar.Parent,
+	})
+	Corner(headDot, 6)
+	New("UIStroke", {Color = C.card, Thickness = 2, Parent = headDot})
+
+	local holder = New("Frame", {
+		Size = UDim2.new(1, 0, 0, 190), BackgroundTransparency = 1, LayoutOrder = 3, Parent = page,
+	})
+	local list = New("ScrollingFrame", {
+		Size = UDim2.new(1, 0, 1, -48), BackgroundColor3 = C.card, BackgroundTransparency = 0.35, BorderSizePixel = 0,
+		ScrollBarThickness = 3, ScrollBarImageColor3 = C.mars, AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(), Parent = holder,
+	}, {
+		New("UIListLayout", {Padding = UDim.new(0, 3), SortOrder = Enum.SortOrder.LayoutOrder}),
+		New("UIPadding", {PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 6)}),
+	})
+	Corner(list, 10)
+	New("UIStroke", {Color = C.line, Thickness = 1, Parent = list})
+	local function scrollBottom()
+		list.CanvasPosition = Vector2.new(0, math.max(0, list.AbsoluteCanvasSize.Y))
+	end
+
+	local inputWrap = New("Frame", {
+		Size = UDim2.new(1, -52, 0, 40), Position = UDim2.new(0, 0, 1, -40), BackgroundColor3 = C.card, Parent = holder,
+	})
+	Corner(inputWrap, 20)
+	local inputStroke = New("UIStroke", {Color = C.line, Thickness = 1.5, Parent = inputWrap})
+	local box = New("TextBox", {
+		Size = UDim2.new(1, -28, 1, 0), Position = UDim2.fromOffset(14, 0), BackgroundTransparency = 1, Text = "",
+		PlaceholderText = "Select a player first", PlaceholderColor3 = C.sub, TextColor3 = C.text,
+		Font = Enum.Font.GothamMedium, TextSize = 13, TextXAlignment = Enum.TextXAlignment.Left,
+		ClearTextOnFocus = false, Parent = inputWrap,
+	})
+	local sendDM
+	box.Focused:Connect(function() Tw(inputStroke, 0.15, {Color = C.mars}) end)
+	box.FocusLost:Connect(function(enter)
+		Tw(inputStroke, 0.15, {Color = C.line})
+		if enter then sendDM() end
+	end)
+
+	local sendBtn = New("TextButton", {
+		Text = "", Size = UDim2.fromOffset(42, 42), AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -22, 1, -20), BackgroundColor3 = Color3.fromRGB(20, 10, 18), AutoButtonColor = false, Parent = holder,
+	})
+	Corner(sendBtn, 21)
+	local ringS = New("UIStroke", {Color = C.white, Thickness = 2.4, Parent = sendBtn})
+	do
+		local g = New("UIGradient", {Color = rainbow(), Parent = ringS})
+		spinners[g] = 150
+	end
+	local sendScale = New("UIScale", {Scale = 1, Parent = sendBtn})
+	local sIcon = Icon("dmsend", sendBtn, 22, C.white)
+	sIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+	sIcon.Position = UDim2.fromScale(0.5, 0.5)
+	sendBtn.MouseEnter:Connect(function() Tw(sendScale, 0.15, {Scale = 1.1}, Enum.EasingStyle.Back) end)
+	sendBtn.MouseLeave:Connect(function() Tw(sendScale, 0.15, {Scale = 1}, Enum.EasingStyle.Back) end)
+
+	local tabBadge, tabBadgeL = Mem.makeBadge(tab.btn, UDim2.new(1, -26, 0.5, -9), 18, 5)
+	local function showBadge()
+		local total = 0
+		for _, n in pairs(unreadBy) do total += n end
+		tabBadge.Visible = total > 0
+		tabBadgeL.Text = total > 9 and "9+" or tostring(total)
+	end
+	local function viewing() return isOpen and page.Visible end
+
+	local function addRow(m)
+		rowOrder += 1
+		local row, dot = Mem.row(list, {i = m.f, d = m.d, n = m.n, m = m.m}, rowOrder)
+		table.insert(dmDots, {dot = dot, id = m.f})
+		table.insert(rows, row)
+		if #rows > 60 then table.remove(rows, 1):Destroy() end
+		task.delay(0.06, scrollBottom)
+	end
+
+	selectPartner = function(p)
+		sel = p
+		for _, r in ipairs(rows) do r:Destroy() end
+		rows, dmDots = {}, {}
+		local cv = loadConv(p.UserId)
+		for i = math.max(1, #cv.list - 59), #cv.list do addRow(cv.list[i]) end
+		unreadBy[p.UserId] = nil
+		showBadge()
+		box.PlaceholderText = "Message " .. p.DisplayName
+		headDot.BackgroundColor3 = Mem.isOnline(p.UserId) and ON or OFF
+		headDot.Visible = true
+	end
+
+	-- ارسال
+	local lastSend = 0
+	sendDM = function()
+		local msg = box.Text:match("^%s*(.-)%s*$")
+		if msg == "" then return end
+		if not sel then
+			Notify("Private chat", "Select a player first", C.mars2, "warn")
+			return
+		end
+		if not req then
+			Notify("Private chat", "Your executor can't send messages", C.mars2, "warn")
+			return
+		end
+		if os.clock() - lastSend < 0.8 then return end
+		lastSend = os.clock()
+		box.Text = ""
+		msg = msg:sub(1, 200)
+		local pid = sel.UserId
+		local cid = LP.UserId .. "-" .. os.time() .. "-" .. math.random(1000, 9999)
+		local m = {f = LP.UserId, d = LP.DisplayName, n = LP.Name, m = msg, c = cid, t = os.time()}
+		pushMsg(pid, m)
+		addRow(m)
+		task.spawn(function()
+			local okE, body = pcall(function()
+				return LP.UserId .. "." .. encrypt(HttpService:JSONEncode({d = LP.DisplayName, n = LP.Name, m = msg, c = cid}), LP.UserId, pid)
+			end)
+			if not okE then return end
+			local ok, r = pcall(req, {
+				Url = "https://ntfy.sh/" .. inbox(pid),
+				Method = "POST",
+				Headers = {["Content-Type"] = "text/plain; charset=utf-8"},
+				Body = body,
+			})
+			if not (ok and r and (r.Success or r.StatusCode == 200)) then
+				Notify("Private chat", "Message may not have been sent", C.mars2, "warn")
 			end
 		end)
 	end
 	sendBtn.MouseButton1Click:Connect(function()
 		Tw(sendScale, 0.08, {Scale = 0.86})
 		task.delay(0.1, function() Tw(sendScale, 0.2, {Scale = 1}, Enum.EasingStyle.Back) end)
-		send()
+		Tw(sIcon, 0.14, {Position = UDim2.new(0.5, 10, 0.5, -10)}, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		task.delay(0.15, function()
+			sIcon.Position = UDim2.new(0.5, -10, 0.5, 10)
+			Tw(sIcon, 0.2, {Position = UDim2.fromScale(0.5, 0.5)}, Enum.EasingStyle.Back)
+		end)
+		sendDM()
+	end)
+
+	-- استقبال (صندوقي الخاص فقط)
+	local function onEvent(d)
+		if type(d) ~= "table" or d.event ~= "message" or not d.id or dseen[d.id] then return end
+		dseen[d.id] = true
+		local f, hx = tostring(d.message or ""):match("^(%d+)%.(%x+)$")
+		local fid = tonumber(f)
+		if not fid or fid == LP.UserId then return end
+		local ok, m = pcall(function()
+			return HttpService:JSONDecode(decrypt(hx, fid, LP.UserId))
+		end)
+		if not ok or type(m) ~= "table" or not m.m then return end
+		m.f, m.t = fid, tonumber(d.time) or os.time()
+		if not pushMsg(fid, m) then return end
+		if sel and sel.UserId == fid and viewing() then
+			addRow(m)
+		else
+			unreadBy[fid] = (unreadBy[fid] or 0) + 1
+			showBadge()
+			if sel and sel.UserId == fid then addRow(m) end
+		end
+		if notifyOn then
+			Notify(tostring(m.d or m.n or "?"):sub(1, 24), "Send a message in a private chat", C.mars2, "dm", false, 2)
+		end
+	end
+
+	local myInbox = inbox(LP.UserId)
+	local wsLast, since = 0, "all"
+	local function poll()
+		local ok, res = pcall(function()
+			return game:HttpGet("https://ntfy.sh/" .. myInbox .. "/json?poll=1&since=" .. since)
+		end)
+		if not ok or type(res) ~= "string" then
+			statusL.Text = "offline"
+			return
+		end
+		if os.clock() - wsLast > 70 then statusL.Text = "online" end
+		for line in res:gmatch("[^\n]+") do
+			local ok2, d = pcall(HttpService.JSONDecode, HttpService, line)
+			if ok2 and type(d) == "table" and d.event == "message" and d.id then
+				since = d.id
+				onEvent(d)
+			end
+		end
+	end
+	task.spawn(function()
+		task.wait(0.5)
+		while Gui.Parent do
+			pcall(poll)
+			notifyOn = true
+			task.wait((os.clock() - wsLast < 70) and 20 or 12)
+		end
+	end)
+	task.spawn(function()
+		if not (WebSocket and WebSocket.connect) then return end
+		task.wait(0.5)
+		while Gui.Parent do
+			local ok, ws = pcall(WebSocket.connect, "wss://ntfy.sh/" .. myInbox .. "/ws")
+			if ok and ws then
+				local closed = false
+				pcall(function()
+					ws.OnMessage:Connect(function(raw)
+						wsLast = os.clock()
+						statusL.Text = "live"
+						local ok2, d = pcall(HttpService.JSONDecode, HttpService, raw)
+						if ok2 then onEvent(d) end
+					end)
+					ws.OnClose:Connect(function() closed = true end)
+				end)
+				while Gui.Parent and not closed do task.wait(1) end
+				pcall(function() ws:Close() end)
+			end
+			task.wait(3)
+		end
+	end)
+
+	-- تنظيف الاشعار + تحديث دوائر الاتصال
+	task.spawn(function()
+		local tick = 0
+		while Gui.Parent do
+			if sel and unreadBy[sel.UserId] and viewing() then
+				unreadBy[sel.UserId] = nil
+				showBadge()
+			end
+			tick += 1
+			if tick % 12 == 0 then
+				if sel then headDot.BackgroundColor3 = Mem.isOnline(sel.UserId) and ON or OFF end
+				for i = #dmDots, 1, -1 do
+					local e = dmDots[i]
+					if e.dot.Parent then
+						e.dot.BackgroundColor3 = Mem.isOnline(e.id) and ON or OFF
+					else
+						table.remove(dmDots, i)
+					end
+				end
+			end
+			task.wait(0.25)
+		end
 	end)
 end)()
 
@@ -2733,6 +3247,37 @@ local function CloseMain()
 end
 local function ToggleMain() if isOpen then CloseMain() else OpenMain() end end
 CloseBtn.MouseButton1Click:Connect(CloseMain)
+
+-- زر تكبير / تصغير السكربت (جنب زر X)
+;(function()
+	local b = New("TextButton", {
+		Text = "", Size = UDim2.fromOffset(32, 32), Position = UDim2.new(1, -80, 0, 7),
+		BackgroundColor3 = C.card, AutoButtonColor = false, Parent = TopBar,
+	})
+	Corner(b, 10)
+	local st = New("UIStroke", {Color = C.mars, Thickness = 1.5, Transparency = 0.2, Parent = b})
+	local icMax = Icon("max", b, 16, C.mars2)
+	icMax.AnchorPoint = Vector2.new(0.5, 0.5)
+	icMax.Position = UDim2.fromScale(0.5, 0.5)
+	local icMin = Icon("min", b, 16, C.mars2)
+	icMin.AnchorPoint = Vector2.new(0.5, 0.5)
+	icMin.Position = UDim2.fromScale(0.5, 0.5)
+	local function apply()
+		icMax.Visible = not Mem.S.big
+		icMin.Visible = Mem.S.big and true or false
+	end
+	apply()
+	b.MouseEnter:Connect(function() Tw(st, 0.15, {Color = C.mars2, Thickness = 2.4, Transparency = 0}) end)
+	b.MouseLeave:Connect(function() Tw(st, 0.15, {Color = C.mars, Thickness = 1.5, Transparency = 0.2}) end)
+	b.MouseButton1Click:Connect(function()
+		Mem.S.big = not Mem.S.big
+		apply()
+		if isOpen then
+			Tw(MainScale, 0.3, {Scale = baseScale()}, Enum.EasingStyle.Quint)
+			Tw(Main, 0.3, {Position = UDim2.fromScale(0.5, 0.5)}, Enum.EasingStyle.Quint)
+		end
+	end)
+end)()
 
 do
 	local dragging, dStart, sPos
