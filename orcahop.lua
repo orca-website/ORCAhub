@@ -724,22 +724,40 @@ local function CreateTab(name, icon)
 			val.Text = tostring(v)
 			task.spawn(pcall, cb, v)
 		end
+		-- الشريط يتغير فقط لما تسحبه أفقياً بقصد؛ لو كنت تمرر الصفحة (سحب عمودي) أو لمسة عابرة ما يتغير
+		local pending, pInput, sx, sy = false, nil, 0, 0
 		hit.InputBegan:Connect(function(i)
 			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-				dragging = true
-				page.ScrollingEnabled = false
-				setFromX(i.Position.X)
+				pending, pInput, sx, sy = true, i, i.Position.X, i.Position.Y
 				i.Changed:Connect(function()
 					if i.UserInputState == Enum.UserInputState.End then
-						dragging = false
-						page.ScrollingEnabled = true
+						if dragging then
+							dragging = false
+							page.ScrollingEnabled = true
+						elseif pending and pInput == i then
+							-- نقرة قصيرة بدون حركة = اختيار القيمة في المكان
+							setFromX(i.Position.X)
+						end
+						pending = false
 					end
 				end)
 			end
 		end)
 		table.insert(conns, UIS.InputChanged:Connect(function(i)
-			if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+			if not (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then return end
+			if dragging then
 				setFromX(i.Position.X)
+			elseif pending then
+				if i.UserInputType == Enum.UserInputType.Touch and i ~= pInput then return end
+				local dx, dy = math.abs(i.Position.X - sx), math.abs(i.Position.Y - sy)
+				if dy > 8 and dy >= dx then
+					pending = false                 -- كان يمرر الصفحة
+				elseif dx > 6 then
+					pending = false
+					dragging = true
+					page.ScrollingEnabled = false
+					setFromX(i.Position.X)
+				end
 			end
 		end))
 		return f, setValue
@@ -905,6 +923,7 @@ local function CreateTab(name, icon)
 				if c:IsA("GuiObject") then c:Destroy() end
 			end
 			local n = 0
+			local imgs = {}
 			local srcList = source and source() or Players:GetPlayers()
 			if source and query ~= "" then
 				local have = {}
@@ -926,6 +945,7 @@ local function CreateTab(name, icon)
 						Image = "rbxthumb://type=AvatarHeadShot&id=" .. p.UserId .. "&w=48&h=48", Parent = it,
 					})
 					Corner(th, 14)
+					table.insert(imgs, th)
 					if filter or source then
 						local od = New("Frame", {
 							Size = UDim2.fromOffset(10, 10), Position = UDim2.fromOffset(24, 23),
@@ -946,6 +966,9 @@ local function CreateTab(name, icon)
 			if n == 0 then
 				Label({Text = emptyText or "No other players in the server", TextSize = 12, TextColor3 = C.sub,
 					Size = UDim2.new(1, 0, 0, 30), TextXAlignment = Enum.TextXAlignment.Center, Parent = list})
+			end
+			if #imgs > 0 then
+				task.spawn(function() pcall(function() game:GetService("ContentProvider"):PreloadAsync(imgs) end) end)
 			end
 			targetH = math.clamp(math.max(n, 1) * 42 + 12, 50, 200)
 			if open then Tw(list, 0.15, {Size = UDim2.new(1, 0, 0, targetH)}) end
@@ -975,8 +998,9 @@ local function CreateTab(name, icon)
 
 		head.MouseButton1Click:Connect(function() setOpen(not open) end)
 		table.insert(conns, Players.PlayerAdded:Connect(function()
-			if open then task.delay(0.3, refresh) end
+			task.delay(0.3, refresh)
 		end))
+		task.defer(function() pcall(refresh) end)
 		table.insert(conns, Players.PlayerRemoving:Connect(function(p)
 			if selected == p then
 				selected = nil
@@ -984,7 +1008,7 @@ local function CreateTab(name, icon)
 				nameL.Text = "Select a player"
 				subL.Text = idleText
 			end
-			if open then task.delay(0.3, refresh) end
+			task.delay(0.3, refresh)
 		end))
 
 		local function search(q, ex)
@@ -996,6 +1020,48 @@ local function CreateTab(name, icon)
 			if open then refresh() else setOpen(true) end
 		end
 		return {Get = function() return selected end, Avatar = avatar, Search = search}
+	end
+
+	function tab:Profile(label, nameText, uname)
+		local b = New("TextButton", {
+			Size = UDim2.new(1, 0, 0, 84), BackgroundColor3 = C.card, Text = "", AutoButtonColor = false,
+			LayoutOrder = nextOrder(), Parent = page,
+		})
+		Corner(b, 12)
+		local s = New("UIStroke", {Thickness = 2.4, Color = C.white, ApplyStrokeMode = Enum.ApplyStrokeMode.Border, Parent = b})
+		local g = New("UIGradient", {Color = rainbow(), Parent = s})
+		spinners[g] = 140
+		local av = New("ImageLabel", {
+			Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(12, 14), BackgroundColor3 = C.bg, Image = "", Parent = b,
+		})
+		Corner(av, 28)
+		New("UIStroke", {Color = C.mars2, Thickness = 1.5, Parent = av})
+		Label({Text = label, TextSize = 11, TextColor3 = C.sub, Size = UDim2.new(1, -160, 0, 14),
+			Position = UDim2.fromOffset(78, 10), Parent = b})
+		local v = Label({Text = nameText, Font = Enum.Font.GothamBlack, TextSize = 20, Size = UDim2.new(1, -160, 0, 26),
+			Position = UDim2.fromOffset(78, 26), TextTruncate = Enum.TextTruncate.AtEnd, Parent = b})
+		hueTexts[v] = math.random()
+		Label({Text = "@" .. uname, TextSize = 12, TextColor3 = C.sub, Size = UDim2.new(1, -160, 0, 16),
+			Position = UDim2.fromOffset(78, 54), TextTruncate = Enum.TextTruncate.AtEnd, Parent = b})
+		local hint = Label({Text = "TAP TO COPY", Font = Enum.Font.GothamBold, TextSize = 9, TextColor3 = C.mars2,
+			Size = UDim2.fromOffset(64, 84), Position = UDim2.new(1, -70, 0, 0), TextXAlignment = Enum.TextXAlignment.Center, Parent = b})
+		task.spawn(function()
+			local ok, id = pcall(function() return Players:GetUserIdFromNameAsync(uname) end)
+			if ok and id then
+				Mem.ownerId = id
+				av.Image = "rbxthumb://type=AvatarHeadShot&id=" .. id .. "&w=150&h=150"
+			end
+		end)
+		b.MouseButton1Click:Connect(function()
+			local sc = setclipboard or toclipboard or (Clipboard and Clipboard.set)
+			if sc then pcall(sc, uname) end
+			Tw(b, 0.08, {BackgroundColor3 = Color3.fromRGB(70, 36, 40)})
+			task.delay(0.1, function() Tw(b, 0.3, {BackgroundColor3 = C.card}) end)
+			hint.Text = "COPIED"
+			task.delay(1.2, function() hint.Text = "TAP TO COPY" end)
+			Notify("Copied", uname, C.mars2)
+		end)
+		return b
 	end
 
 	function tab:Owner(label, value, icon)
@@ -1088,6 +1154,7 @@ local T = {
 T.Owners:Paragraph("OWNERS", "Tap any card to copy it.")
 T.Owners:Owner("Developer number:", "+21224838993", "phone")
 T.Owners:Owner("TikTok Developer:", "uiogunio", "tiktok")
+T.Owners:Profile("user roblox  Developer", "orca", "lufl40")
 
 ---------------- COPIES SKIN
 local copyBusy = false
@@ -1736,6 +1803,7 @@ end)
 -- MUSIC
 ------------------------------------------------------------------
 local musicSound, musicVol, musicLoop = nil, 5, false
+local musicId, musicAuto, musicTok = nil, false, 0
 
 local function playMusic(text)
 	local id = tonumber(text)
@@ -1750,6 +1818,7 @@ local function playMusic(text)
 	musicSound = s
 	s:Play()
 	-- يوصل للكل في السيرفر: نفس ريموت صوت اللعبة (مرة وحدة، بدون تكرار)
+	musicId = id
 	task.spawn(function()
 		pcall(function()
 			local ev = RS:FindFirstChild("RE") and RS.RE:FindFirstChild("1Gu1nSound1s") or RS:FindFirstChild("1Gu1nSound1s", true)
@@ -1771,6 +1840,8 @@ end
 local _, musicBox = T.Music:Input("Put id music", true, function(text) playMusic(text) end)
 T.Music:Button("Play the song", function() playMusic(musicBox.Text) end)
 T.Music:Button("Stop the song", function()
+	musicTok += 1
+	if musicAuto then musicAuto = false pcall(function() autoMusicBtn.Set(false) end) end
 	if musicSound then musicSound:Stop() musicSound:Destroy() musicSound = nil end
 	Notify("music", "Stopped", C.mars2, "music")
 end)
@@ -1782,6 +1853,32 @@ T.Music:Toggle("Loop", false, function(state)
 	musicLoop = state
 	if musicSound then musicSound.Looped = state end
 end)
+-- زر أخضر دائم (مثل Permanent Teleport): يعيد تشغيل الأغنية كل ما تنتهي
+local autoMusicBtn
+autoMusicBtn = T.Music:ColorToggle("Auto replay song", function(state)
+	musicAuto = state
+	musicTok += 1
+	local tok = musicTok
+	if not state then return end
+	if not musicId then
+		musicAuto = false
+		autoMusicBtn.Set(false)
+		Notify("music", "Play a song first", C.mars2, "warn")
+		return
+	end
+	task.spawn(function()
+		while musicAuto and tok == musicTok do
+			local s = musicSound
+			if not s then break end
+			local t0 = os.clock()
+			while s.Parent and not s.IsPlaying and os.clock() - t0 < 8 do task.wait(0.2) end
+			while musicAuto and tok == musicTok and musicSound == s and s.Parent and s.IsPlaying do task.wait(0.25) end
+			if not musicAuto or tok ~= musicTok or musicSound ~= s then break end
+			task.wait(0.3)
+			playMusic(tostring(musicId))
+		end
+	end)
+end, "music")
 
 ------------------------------------------------------------------
 -- MISC
@@ -2560,11 +2657,23 @@ end))
 		}, {
 			New("UIListLayout", {Padding = UDim.new(0, 0), SortOrder = Enum.SortOrder.LayoutOrder}),
 		})
+		local isOwnerRow
+		if Mem.ownerId then
+			isOwnerRow = tonumber(d.i) == Mem.ownerId
+		else
+			isOwnerRow = tostring(d.n or ""):lower() == "lufl40"
+		end
 		local rich = '<font color="' .. hex(col) .. '"><b>' .. esc(name) .. '</b></font>'
+		if isOwnerRow then rich = rich .. string.rep(" ", 5) end
 		if uname ~= "" then rich = rich .. '  <font color="#a5949e" size="8">' .. esc(uname) .. '</font>' end
 		local head = Label({Text = rich, TextSize = 9, Size = UDim2.new(1, 0, 0, 11),
 			TextTruncate = Enum.TextTruncate.AtEnd, LayoutOrder = 1, Parent = colF})
 		head.RichText = true
+		if isOwnerRow then
+			local okW, wv = pcall(function() return TextService:GetTextSize(name, 9, Enum.Font.GothamBold, Vector2.new(400, 20)).X end)
+			local cr = Icon("crown", head, 11, Color3.fromRGB(255, 200, 40))
+			cr.Position = UDim2.fromOffset((okW and wv or 40) + 3, 0)
+		end
 		local msgL = Label({Text = tostring(d.m or ""):sub(1, 200), TextSize = 10, TextWrapped = true,
 			TextYAlignment = Enum.TextYAlignment.Top, Size = UDim2.new(1, 0, 0, 0),
 			AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2, Parent = colF})
@@ -2794,10 +2903,8 @@ end))
 			return game:HttpGet("https://ntfy.sh/" .. TOPIC .. "/json?poll=1&since=" .. since)
 		end)
 		if not ok or type(res) ~= "string" then
-			statusL.Text = "offline"
 			return
 		end
-		if os.clock() - wsLast > 70 then statusL.Text = "online" end
 		for line in res:gmatch("[^\n]+") do
 			local ok2, d = pcall(HttpService.JSONDecode, HttpService, line)
 			if ok2 and type(d) == "table" and d.event == "message" and d.id then
@@ -2811,7 +2918,7 @@ end))
 		while Gui.Parent do
 			pcall(poll)
 			counting = true
-			task.wait(wsUp and 20 or 4)
+			task.wait(wsUp and 20 or 3)
 		end
 	end)
 
@@ -2822,19 +2929,29 @@ end))
 			if ok and ws then
 				local closed = false
 				wsUp = true
+				wsLast = os.clock()
 				pcall(function()
 					ws.OnMessage:Connect(function(raw)
 						wsLast = os.clock()
-						statusL.Text = "live"
 						local ok2, d = pcall(HttpService.JSONDecode, HttpService, raw)
 						if ok2 then handle(d) end
 					end)
 					ws.OnClose:Connect(function() closed = true end)
 				end)
-				while Gui.Parent and not closed do task.wait(0.25) end
+				while Gui.Parent and not closed and os.clock() - wsLast < 100 do task.wait(0.25) end
 				wsUp = false
 				pcall(function() ws:Close() end)
 			end
+			task.wait(1)
+		end
+	end)
+
+	-- الحالة: online فقط لو الاتصال المباشر شغال فعلاً، وغير كذا offline
+	task.spawn(function()
+		while Gui.Parent do
+			local live = wsUp and (os.clock() - wsLast) < 100
+			statusL.Text = live and "online" or "offline"
+			statusL.TextColor3 = live and ON or Color3.fromRGB(235, 90, 90)
 			task.wait(1)
 		end
 	end)
@@ -3271,10 +3388,8 @@ end)()
 			return game:HttpGet("https://ntfy.sh/" .. myInbox .. "/json?poll=1&since=" .. since)
 		end)
 		if not ok or type(res) ~= "string" then
-			statusL.Text = "offline"
 			return
 		end
-		if os.clock() - wsLast > 70 then statusL.Text = "online" end
 		for line in res:gmatch("[^\n]+") do
 			local ok2, d = pcall(HttpService.JSONDecode, HttpService, line)
 			if ok2 and type(d) == "table" and d.event == "message" and d.id then
@@ -3288,7 +3403,7 @@ end)()
 		while Gui.Parent do
 			pcall(poll)
 			notifyOn = true
-			task.wait(wsUp and 20 or 5)
+			task.wait(wsUp and 20 or 3)
 		end
 	end)
 	task.spawn(function()
@@ -3299,19 +3414,28 @@ end)()
 			if ok and ws then
 				local closed = false
 				wsUp = true
+				wsLast = os.clock()
 				pcall(function()
 					ws.OnMessage:Connect(function(raw)
 						wsLast = os.clock()
-						statusL.Text = "live"
 						local ok2, d = pcall(HttpService.JSONDecode, HttpService, raw)
 						if ok2 then onEvent(d) end
 					end)
 					ws.OnClose:Connect(function() closed = true end)
 				end)
-				while Gui.Parent and not closed do task.wait(0.25) end
+				while Gui.Parent and not closed and os.clock() - wsLast < 100 do task.wait(0.25) end
 				wsUp = false
 				pcall(function() ws:Close() end)
 			end
+			task.wait(1)
+		end
+	end)
+
+	task.spawn(function()
+		while Gui.Parent do
+			local live = wsUp and (os.clock() - wsLast) < 100
+			statusL.Text = live and "online" or "offline"
+			statusL.TextColor3 = live and ON or Color3.fromRGB(235, 90, 90)
 			task.wait(1)
 		end
 	end)
