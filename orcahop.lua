@@ -1802,8 +1802,7 @@ end)
 ------------------------------------------------------------------
 -- MUSIC
 ------------------------------------------------------------------
-local musicSound, musicVol, musicLoop = nil, 5, false
-local musicId, musicAuto, musicTok = nil, false, 0
+local MU = {vol = 5, loop = false, auto = false, tok = 0}   -- كل متغيرات الموسيقى في جدول واحد (حد المتغيرات المحلية)
 
 local function playMusic(text)
 	local id = tonumber(text)
@@ -1811,14 +1810,14 @@ local function playMusic(text)
 		Notify("music", "Put a valid ID first", C.mars2, "music")
 		return
 	end
-	if musicSound then musicSound:Destroy() end
+	if MU.s then MU.s:Destroy() end
 	local s = New("Sound", {
-		Name = "OrcaMusic", SoundId = "rbxassetid://" .. id, Volume = musicVol, Looped = musicLoop, Parent = SoundService,
+		Name = "OrcaMusic", SoundId = "rbxassetid://" .. id, Volume = MU.vol, Looped = MU.loop, Parent = SoundService,
 	})
-	musicSound = s
+	MU.s = s
 	s:Play()
 	-- يوصل للكل في السيرفر: نفس ريموت صوت اللعبة (مرة وحدة، بدون تكرار)
-	musicId = id
+	MU.id = id
 	task.spawn(function()
 		pcall(function()
 			local ev = RS:FindFirstChild("RE") and RS.RE:FindFirstChild("1Gu1nSound1s") or RS:FindFirstChild("1Gu1nSound1s", true)
@@ -1828,7 +1827,7 @@ local function playMusic(text)
 	task.spawn(function()
 		local t0 = os.clock()
 		while not s.IsLoaded and os.clock() - t0 < 6 do task.wait(0.1) end
-		if musicSound ~= s then return end
+		if MU.s ~= s then return end
 		if s.IsLoaded then
 			Notify("music", "It has been activated", C.mars, "music", true)
 		else
@@ -1840,42 +1839,41 @@ end
 local _, musicBox = T.Music:Input("Put id music", true, function(text) playMusic(text) end)
 T.Music:Button("Play the song", function() playMusic(musicBox.Text) end)
 T.Music:Button("Stop the song", function()
-	musicTok += 1
-	if musicAuto then musicAuto = false pcall(function() autoMusicBtn.Set(false) end) end
-	if musicSound then musicSound:Stop() musicSound:Destroy() musicSound = nil end
+	MU.tok += 1
+	if MU.auto then MU.auto = false pcall(function() MU.btn.Set(false) end) end
+	if MU.s then MU.s:Stop() MU.s:Destroy() MU.s = nil end
 	Notify("music", "Stopped", C.mars2, "music")
 end)
 T.Music:Slider("Volume", 0, 100, 50, function(v)
-	musicVol = v / 10
-	if musicSound then musicSound.Volume = musicVol end
+	MU.vol = v / 10
+	if MU.s then MU.s.Volume = MU.vol end
 end)
 T.Music:Toggle("Loop", false, function(state)
-	musicLoop = state
-	if musicSound then musicSound.Looped = state end
+	MU.loop = state
+	if MU.s then MU.s.Looped = state end
 end)
 -- زر أخضر دائم (مثل Permanent Teleport): يعيد تشغيل الأغنية كل ما تنتهي
-local autoMusicBtn
-autoMusicBtn = T.Music:ColorToggle("Auto replay song", function(state)
-	musicAuto = state
-	musicTok += 1
-	local tok = musicTok
+MU.btn = T.Music:ColorToggle("Auto replay song", function(state)
+	MU.auto = state
+	MU.tok += 1
+	local tok = MU.tok
 	if not state then return end
-	if not musicId then
-		musicAuto = false
-		autoMusicBtn.Set(false)
+	if not MU.id then
+		MU.auto = false
+		MU.btn.Set(false)
 		Notify("music", "Play a song first", C.mars2, "warn")
 		return
 	end
 	task.spawn(function()
-		while musicAuto and tok == musicTok do
-			local s = musicSound
+		while MU.auto and tok == MU.tok do
+			local s = MU.s
 			if not s then break end
 			local t0 = os.clock()
 			while s.Parent and not s.IsPlaying and os.clock() - t0 < 8 do task.wait(0.2) end
-			while musicAuto and tok == musicTok and musicSound == s and s.Parent and s.IsPlaying do task.wait(0.25) end
-			if not musicAuto or tok ~= musicTok or musicSound ~= s then break end
+			while MU.auto and tok == MU.tok and MU.s == s and s.Parent and s.IsPlaying do task.wait(0.25) end
+			if not MU.auto or tok ~= MU.tok or MU.s ~= s then break end
 			task.wait(0.3)
-			playMusic(tostring(musicId))
+			playMusic(tostring(MU.id))
 		end
 	end)
 end, "music")
