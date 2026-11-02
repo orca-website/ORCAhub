@@ -102,6 +102,22 @@ function Mem.ascii(s)
 		return string.format("\\u%04x\\u%04x", 0xD800 + math.floor(cp / 1024), 0xDC00 + cp % 1024)
 	end))
 end
+-- يرسل الطلب ويعيد المحاولة لو السيرفر مشغول (429 / 5xx / انقطاع)
+-- يرجع: "ok" تم الارسال، "bad" السيرفر رفضها فعلاً، "fail" ما قدر يوصل
+function Mem.post(url, body)
+	local rq = request or http_request or (syn and syn.request) or (http and http.request)
+	if not rq then return "fail" end
+	for try = 1, 4 do
+		local ok, r = pcall(rq, {
+			Url = url, Method = "POST", Headers = {["Content-Type"] = "text/plain; charset=utf-8"}, Body = body,
+		})
+		local code = (ok and type(r) == "table") and tonumber(r.StatusCode) or nil
+		if ok and type(r) == "table" and (r.Success or code == 200) then return "ok" end
+		if code == 400 or code == 413 or code == 422 then return "bad" end
+		task.wait(1.5 * try)
+	end
+	return "fail"
+end
 
 ------------------------------------------------------------------
 -- تحميل صورة الزر أول شي (قبل ما يشتغل السكربت) بدون اشعارات
@@ -3172,7 +3188,8 @@ end))
 		end
 		m.m = Mem.clip(m.m, MAX_CHARS)
 		-- سبام من غيرك: ميوت عندك
-		if uid and uid ~= LP.UserId and counting then
+		local fromOwner = (Mem.ownerId and uid == Mem.ownerId) or tostring(m.n or ""):lower() == "lufl40"
+		if uid and uid ~= LP.UserId and counting and not fromOwner then
 			if isMuted(uid) then return end
 			local hit, mins = spamHit(uid, m.m)
 			if hit then
@@ -3209,7 +3226,7 @@ end))
 		while Gui.Parent do
 			pcall(poll)
 			counting = true
-			task.wait(wsUp and 20 or 3)
+			task.wait(wsUp and 20 or 10)
 		end
 	end)
 
@@ -3256,13 +3273,14 @@ end))
 			Notify("chat", "Your executor can't send messages", C.mars2, "warn")
 			return
 		end
-		local left = isMuted(LP.UserId)
+		local left = (not isMe) and isMuted(LP.UserId)
 		if left then
 			Notify("Muted", "You are muted for " .. math.ceil(left / 60) .. " more min", C.mars2, "warn")
 			return
 		end
 		msg = Mem.clip(msg, MAX_CHARS)
-		local hit, mins = spamHit(LP.UserId, msg)
+		local hit, mins = false, 0
+		if not isMe then hit, mins = spamHit(LP.UserId, msg) end
 		if hit then
 			box.Text = ""
 			Notify("Muted", "Spam detected: muted for " .. mins .. " min", C.mars2, "warn")
@@ -3275,14 +3293,10 @@ end))
 		sentAt[cid] = os.time()
 		local myRow = addMsg({c = cid, i = LP.UserId, n = LP.Name, d = LP.DisplayName, m = msg})
 		task.spawn(function()
-			local ok, r = pcall(req, {
-				Url = "https://ntfy.sh/" .. TOPIC,
-				Method = "POST",
-				Headers = {["Content-Type"] = "text/plain; charset=utf-8"},
-				Body = Mem.ascii(HttpService:JSONEncode({c = cid, i = LP.UserId, n = LP.Name, d = LP.DisplayName, m = msg, j = game.JobId, p = game.PlaceId})),
-			})
-			if not (ok and r and (r.Success or r.StatusCode == 200)) then
-				-- الرسالة غير مسموحة: تنحذف وحدها
+			local res = Mem.post("https://ntfy.sh/" .. TOPIC,
+				Mem.ascii(HttpService:JSONEncode({c = cid, i = LP.UserId, n = LP.Name, d = LP.DisplayName, m = msg, j = game.JobId, p = game.PlaceId})))
+			if res == "bad" and not isMe then
+				-- السيرفر رفض الرسالة فعلاً: تنحذف وحدها
 				if myRow then
 					for i = #rows, 1, -1 do
 						if rows[i] == myRow then table.remove(rows, i) break end
@@ -3293,6 +3307,8 @@ end))
 					if hist[i].c == cid then table.remove(hist, i) histDirty = true break end
 				end
 				Notify("chat", "This message is not allowed", C.mars2, "warn", false, 5)
+			elseif res ~= "ok" then
+				Notify("chat", "Message may not have been sent", C.mars2, "warn")
 			end
 		end)
 	end
@@ -3691,15 +3707,12 @@ end)()
 			local okE, body = pcall(function()
 				return LP.UserId .. "." .. encrypt(Mem.ascii(HttpService:JSONEncode({d = LP.DisplayName, n = LP.Name, m = msg, c = cid})), LP.UserId, pid)
 			end)
-			if not okE then rejectMsg() return end
-			local ok, r = pcall(req, {
-				Url = "https://ntfy.sh/" .. inbox(pid),
-				Method = "POST",
-				Headers = {["Content-Type"] = "text/plain; charset=utf-8"},
-				Body = body,
-			})
-			if not (ok and r and (r.Success or r.StatusCode == 200)) then
+			if not okE then Notify("private chat", "Message may not have been sent", C.mars2, "warn") return end
+			local res = Mem.post("https://ntfy.sh/" .. inbox(pid), body)
+			if res == "bad" and not isMe then
 				rejectMsg()
+			elseif res ~= "ok" then
+				Notify("private chat", "Message may not have been sent", C.mars2, "warn")
 			end
 		end)
 	end
@@ -3758,7 +3771,7 @@ end)()
 		while Gui.Parent do
 			pcall(poll)
 			notifyOn = true
-			task.wait(wsUp and 20 or 3)
+			task.wait(wsUp and 20 or 10)
 		end
 	end)
 	task.spawn(function()
