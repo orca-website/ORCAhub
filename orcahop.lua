@@ -1,5 +1,15 @@
 --[[ script orca / uiogunio  brookhaven🏡RP ]]
 
+-- يشتغل في Brookhaven فقط
+if game.PlaceId ~= 4924922222 then
+	pcall(function()
+		game:GetService("StarterGui"):SetCore("SendNotification", {
+			Title = "ORCA HUB", Text = "This script works only in Brookhaven", Duration = 5,
+		})
+	end)
+	return
+end
+
 local Players      = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService   = game:GetService("RunService")
@@ -92,6 +102,7 @@ function Mem.clip(s, n)
 end
 -- سيرفرات مستخدمي السكربت (للـ Join)
 Mem.servers = {}
+Mem.hidden = {}   -- ناس مشغلين No entry (ما يطلعون في قائمة Join)
 
 ------------------------------------------------------------------
 -- تحميل صورة الزر أول شي (قبل ما يشتغل السكربت) بدون اشعارات
@@ -244,6 +255,12 @@ local function Icon(name, parent, size, color)
 		R(8.6, 12.6, 6.4, 17, 0, 1)
 		O(11.4, 13, 1.8, Color3.fromRGB(14, 8, 14))
 		R(12, 22.4, 21, 1.8, 0, 0.9)
+	elseif name == "file" then
+		-- ملف
+		Box(11.5, 12.5, 15, 20, 2, 1.8)
+		R(11.5, 9, 8, 1.8, 0, 0.9)
+		R(11.5, 13, 8, 1.8, 0, 0.9)
+		R(10, 17, 5, 1.8, 0, 0.9)
 	elseif name == "eye" then
 		Box(12, 12, 20, 11, 5.5, 1.8)
 		O(12, 12, 6)
@@ -1166,6 +1183,7 @@ local T = {
 	Teleport    = CreateTab("Teleport", "pin"),
 	Bang        = CreateTab("bang", "people"),
 	Smla        = CreateTab("smla", "eye"),
+	News        = CreateTab("News", "file"),
 	Chat        = CreateTab("Public chat", "send"),
 	Private     = CreateTab("Private chat", "dm"),
 	Accessories = CreateTab("Accessories", "hat"),
@@ -2146,6 +2164,45 @@ for _, p in ipairs(Players:GetPlayers()) do espHook(p) end
 table.insert(conns, Players.PlayerAdded:Connect(espHook))
 table.insert(conns, Players.PlayerRemoving:Connect(espRemove))
 
+-- AUTOLOAD (اول عنصر في Misc): يشغل السكربت لوحده بعد rejoin / server hop / اي join
+do
+	-- حط رابط سكربتك الخام هنا، مثال: "https://pastefy.app/xxxxxx/raw"
+	local AUTOLOAD_URL = ""
+	local qot = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
+	local stateFile = "OrcaHub/autoload.txt"
+	local fs = (writefile and readfile and isfile) and true or false
+	local alOn, queued = false, false
+	if fs then
+		pcall(function() if isfile(stateFile) and readfile(stateFile) == "1" then alOn = true end end)
+	end
+	local function queueNow()
+		if queued or not qot or AUTOLOAD_URL == "" then return end
+		local code = 'repeat task.wait() until game:IsLoaded() task.wait(2) loadstring(game:HttpGet("' .. AUTOLOAD_URL .. '"))()'
+		if pcall(qot, code) then queued = true end
+	end
+	table.insert(conns, LP.OnTeleport:Connect(function()
+		if alOn then queueNow() end
+	end))
+	T.Misc:Toggle("Autoload", alOn, function(state)
+		alOn = state
+		if fs then
+			pcall(function()
+				if makefolder and isfolder and not isfolder("OrcaHub") then makefolder("OrcaHub") end
+				writefile(stateFile, state and "1" or "0")
+			end)
+		end
+		if not state then
+			Notify("Autoload", "OFF", C.mars2)
+		elseif not qot then
+			Notify("Autoload", "Your executor doesn't support autoload", C.mars2, "warn")
+		elseif AUTOLOAD_URL == "" then
+			Notify("Autoload", "Put your script link in AUTOLOAD_URL first", C.mars2, "warn")
+		else
+			Notify("Autoload", "ON: runs after rejoin / server hop / join", C.mars2)
+		end
+	end)
+end
+
 T.Misc:Toggle("Fly", false, function(s)
 	if s then
 		if not startFly() then Notify("Fly", "Character not found", C.mars2) end
@@ -2240,7 +2297,7 @@ end))
 -- JOIN: تنتقل لسيرفر شخص مشغل السكربت (الأصدقاء أول، وبحث بين مستخدمي السكربت فقط)
 do
 	local jhdr = T.Join:Header("Join", true)
-	local joinPicker = T.Join:PlayerPicker(nil, function(p) return p.online end, "No script users online", function()
+	local joinPicker = T.Join:PlayerPicker(nil, function(p) return p.online and not Mem.hidden[p.UserId] end, "No script users online", function()
 		return Mem.knownList and Mem.knownList(false) or {}
 	end)
 
@@ -2298,6 +2355,14 @@ do
 		end)
 		if not ok then Notify("Join", "Failed to join", C.mars2, "warn") end
 	end, {height = 70, textSize = 22, icon = "door", iconSize = 32})
+
+	-- No entry: ما يطلع اسمك في قائمة Join عند غيرك
+	T.Join:Header("Prevent anyone from entering with you", true)
+	T.Join:Toggle("No entry", false, function(state)
+		Mem.noEntry = state and true or nil
+		if Mem.sendPresence then task.spawn(Mem.sendPresence, "p") end
+		Notify("No entry", state and "ON: nobody can join you from the script" or "OFF", C.mars2, "door")
+	end)
 end
 
 ------------------------------------------------------------------
@@ -3171,8 +3236,14 @@ end))
 		local uid = tonumber(m.i)
 		Mem.noteKnown(uid, m.n, m.d)
 		-- سيرفر الشخص (للـ Join)
-		if uid and uid ~= LP.UserId and m.j then
-			Mem.servers[uid] = {j = tostring(m.j), p = tonumber(m.p)}
+		if uid and uid ~= LP.UserId then
+			if m.x then
+				Mem.servers[uid] = nil
+				Mem.hidden[uid] = true
+			elseif m.j then
+				Mem.servers[uid] = {j = tostring(m.j), p = tonumber(m.p)}
+				Mem.hidden[uid] = nil
+			end
 		end
 		if uid and stamp then
 			if m.t == "b" then
@@ -3305,7 +3376,7 @@ end))
 				Url = "https://ntfy.sh/" .. TOPIC,
 				Method = "POST",
 				Headers = {["Content-Type"] = "text/plain; charset=utf-8"},
-				Body = jsonSafe(HttpService:JSONEncode({c = cid, i = LP.UserId, n = LP.Name, d = LP.DisplayName, m = msg, j = game.JobId, p = game.PlaceId})),
+				Body = jsonSafe(HttpService:JSONEncode({c = cid, i = LP.UserId, n = LP.Name, d = LP.DisplayName, m = msg, j = (not Mem.noEntry) and game.JobId or nil, p = (not Mem.noEntry) and game.PlaceId or nil, x = Mem.noEntry or nil})),
 			})
 			if not (ok and r and (r.Success or r.StatusCode == 200)) then
 				if hasSymbols(msg) and not isOwner() then
@@ -3335,9 +3406,10 @@ end))
 			Url = "https://ntfy.sh/" .. TOPIC,
 			Method = "POST",
 			Headers = {["Content-Type"] = "text/plain; charset=utf-8"},
-			Body = HttpService:JSONEncode({t = kind, c = cid, i = LP.UserId, n = LP.Name, d = LP.DisplayName, j = game.JobId, p = game.PlaceId}),
+			Body = HttpService:JSONEncode({t = kind, c = cid, i = LP.UserId, n = LP.Name, d = LP.DisplayName, j = (not Mem.noEntry) and game.JobId or nil, p = (not Mem.noEntry) and game.PlaceId or nil, x = Mem.noEntry or nil}),
 		})
 	end
+	Mem.sendPresence, Mem.jsonSafe = sendPresence, jsonSafe
 	task.spawn(function()
 		task.wait(1.5)
 		while Gui.Parent do
@@ -3903,6 +3975,214 @@ T.Misc:Rainbow("start script", function()
 	end)
 	if not ok then Notify("start script", "Failed to load", C.mars2) end
 end)
+
+------------------------------------------------------------------
+-- NEWS (يكتب فيه lufl40 فقط، والباقي يقرأ)
+------------------------------------------------------------------
+;(function()
+	local HttpService = game:GetService("HttpService")
+	local NEWS_TOPIC = "orca_hub_news_v1_p4k9d2x7m1"
+	local FOLDER = "OrcaHub"
+	local newsFile = FOLDER .. "/news.json"
+	local canFS = (writefile and readfile and isfile) and true or false
+	local req = request or http_request or (syn and syn.request) or (http and http.request)
+	local isAdmin = LP.Name:lower() == "lufl40"
+	local MAX_NEWS = 300
+	local GOLD = Color3.fromRGB(255, 205, 70)
+	local page = T.News.page
+
+	T.News:Header("News", true)
+
+	local items, seen = {}, {}
+	local empty = Label({
+		Text = "No news yet", TextSize = 12, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Center,
+		Size = UDim2.new(1, 0, 0, 40), LayoutOrder = 5, Parent = page,
+	})
+
+	local function fromAdmin(m)
+		if Mem.ownerId then return tonumber(m.i) == Mem.ownerId end
+		return tostring(m.n or ""):lower() == "lufl40"
+	end
+
+	local function saveNews()
+		if not canFS then return end
+		pcall(function()
+			if makefolder and isfolder and not isfolder(FOLDER) then makefolder(FOLDER) end
+			local keep = {}
+			for i = math.max(1, #items - 59), #items do keep[#keep + 1] = items[i] end
+			writefile(newsFile, HttpService:JSONEncode(keep))
+		end)
+	end
+
+	local function buildCard(m)
+		local t = tonumber(m.t) or os.time()
+		local text = Mem.clip(tostring(m.m or ""), MAX_NEWS)
+		local isAr = text:find("[\216-\219]") ~= nil
+		local card = New("Frame", {
+			Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = C.white,
+			LayoutOrder = 1000 + (2000000000 - math.floor(t)), Parent = page,
+		}, {
+			New("UIListLayout", {Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder}),
+			New("UIPadding", {PaddingTop = UDim.new(0, 10), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12)}),
+			New("UIGradient", {Color = ColorSequence.new(Color3.fromRGB(70, 46, 22), Color3.fromRGB(28, 18, 14)), Rotation = 90}),
+		})
+		Corner(card, 12)
+		local st = New("UIStroke", {Color = C.white, Thickness = 1.8, Transparency = 0.1, Parent = card})
+		spinners[New("UIGradient", {Color = rainbow(), Parent = st})] = 90
+
+		local top = New("Frame", {Size = UDim2.new(1, 0, 0, 26), BackgroundTransparency = 1, LayoutOrder = 1, Parent = card})
+		local av = New("ImageLabel", {
+			Size = UDim2.fromOffset(24, 24), Position = UDim2.fromOffset(0, 1), BackgroundColor3 = C.bg,
+			Image = m.i and ("rbxthumb://type=AvatarHeadShot&id=" .. tostring(m.i) .. "&w=48&h=48") or "", Parent = top,
+		})
+		Corner(av, 12)
+		New("UIStroke", {Color = GOLD, Thickness = 1.4, Parent = av})
+		Label({
+			Text = '<font color="#ffcd46"><b>' .. tostring(m.d or "ORCA"):gsub("&", "&amp;"):gsub("<", "&lt;") .. '</b></font>  <font color="#a5949e" size="9">@' .. tostring(m.n or "lufl40"):gsub("&", "&amp;"):gsub("<", "&lt;") .. '</font>',
+			TextSize = 13, Size = UDim2.new(1, -60, 1, 0), Position = UDim2.fromOffset(32, 0),
+			TextTruncate = Enum.TextTruncate.AtEnd, Parent = top,
+		}).RichText = true
+		local cr = Icon("crown", top, 20, GOLD)
+		cr.AnchorPoint = Vector2.new(1, 0)
+		cr.Position = UDim2.new(1, 0, 0, 2)
+
+		Label({
+			Text = text, TextSize = isAr and 16 or 13, Font = isAr and Enum.Font.Arimo or Enum.Font.GothamMedium,
+			TextXAlignment = isAr and Enum.TextXAlignment.Right or Enum.TextXAlignment.Left,
+			TextColor3 = Color3.fromRGB(255, 240, 205), TextWrapped = true,
+			Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2, Parent = card,
+		})
+		Label({
+			Text = os.date("%d %b  %H:%M", t), TextSize = 10, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Right,
+			Size = UDim2.new(1, 0, 0, 12), LayoutOrder = 3, Parent = card,
+		})
+		return card
+	end
+
+	local function addItem(m)
+		if type(m) ~= "table" or not m.m or not fromAdmin(m) then return end
+		if m.c then
+			if seen[m.c] then return end
+			seen[m.c] = true
+		end
+		table.insert(items, m)
+		buildCard(m)
+		empty.Visible = false
+		saveNews()
+	end
+
+	-- الاخبار المحفوظة
+	if canFS then
+		pcall(function()
+			if isfile(newsFile) then
+				local t = HttpService:JSONDecode(readfile(newsFile))
+				if type(t) == "table" then
+					for _, m in ipairs(t) do
+						if type(m) == "table" and m.m then
+							if m.c then seen[m.c] = true end
+							table.insert(items, m)
+							buildCard(m)
+							empty.Visible = false
+						end
+					end
+				end
+			end
+		end)
+	end
+
+	-- كتابة الاخبار: lufl40 فقط
+	if isAdmin then
+		local comp = New("Frame", {
+			Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = C.card,
+			LayoutOrder = 2, Parent = page,
+		}, {
+			New("UIListLayout", {Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder}),
+			New("UIPadding", {PaddingTop = UDim.new(0, 10), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12)}),
+		})
+		Corner(comp, 12)
+		New("UIStroke", {Color = GOLD, Thickness = 1.4, Transparency = 0.2, Parent = comp})
+		Label({Text = "Publish news", Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = GOLD,
+			Size = UDim2.new(1, 0, 0, 16), LayoutOrder = 1, Parent = comp})
+		local box = New("TextBox", {
+			Size = UDim2.new(1, 0, 0, 64), BackgroundColor3 = C.bg, Text = "", PlaceholderText = "Write the news here...",
+			PlaceholderColor3 = C.sub, TextColor3 = C.text, Font = Enum.Font.GothamMedium, TextSize = 13, TextWrapped = true,
+			MultiLine = true, ClearTextOnFocus = false, TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top, LayoutOrder = 2, Parent = comp,
+		})
+		Corner(box, 8)
+		New("UIPadding", {PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6), PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8), Parent = box})
+		box:GetPropertyChangedSignal("Text"):Connect(function()
+			local len = utf8.len(box.Text)
+			if (len and len > MAX_NEWS) or (not len and #box.Text > MAX_NEWS) then
+				box.Text = Mem.clip(box.Text, MAX_NEWS)
+			end
+		end)
+		local pub = New("TextButton", {
+			Size = UDim2.new(1, 0, 0, 38), BackgroundColor3 = C.white, Text = "", AutoButtonColor = false, LayoutOrder = 3, Parent = comp,
+		})
+		Corner(pub, 10)
+		New("UIGradient", {Color = ColorSequence.new(Color3.fromRGB(255, 225, 90), Color3.fromRGB(255, 130, 30)), Rotation = 45, Parent = pub})
+		local pst = New("UIStroke", {Color = C.white, Thickness = 2, Parent = pub})
+		spinners[New("UIGradient", {Color = rainbow(), Parent = pst})] = 120
+		Label({Text = "PUBLISH", Font = Enum.Font.GothamBlack, TextSize = 14, TextColor3 = Color3.fromRGB(40, 22, 8),
+			TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.fromScale(1, 1), Parent = pub})
+		pub.MouseButton1Click:Connect(function()
+			local text = box.Text:match("^%s*(.-)%s*$")
+			if text == "" then return end
+			if not req then
+				Notify("News", "Your executor can't send messages", C.mars2, "warn")
+				return
+			end
+			text = Mem.clip(text, MAX_NEWS)
+			box.Text = ""
+			local m = {
+				c = LP.UserId .. "-" .. os.time() .. "-" .. math.random(1000, 9999),
+				i = LP.UserId, n = LP.Name, d = LP.DisplayName, m = text, t = os.time(),
+			}
+			addItem(m)
+			task.spawn(function()
+				local body = HttpService:JSONEncode(m)
+				if Mem.jsonSafe then body = Mem.jsonSafe(body) end
+				local ok, r = pcall(req, {
+					Url = "https://ntfy.sh/" .. NEWS_TOPIC,
+					Method = "POST",
+					Headers = {["Content-Type"] = "text/plain; charset=utf-8"},
+					Body = body,
+				})
+				if not (ok and r and (r.Success or r.StatusCode == 200)) then
+					Notify("News", "Could not publish the news", C.mars2, "warn")
+				end
+			end)
+		end)
+	end
+
+	-- استقبال الاخبار
+	local since = "all"
+	local function poll()
+		local ok, res = pcall(function()
+			return game:HttpGet("https://ntfy.sh/" .. NEWS_TOPIC .. "/json?poll=1&since=" .. since)
+		end)
+		if not ok or type(res) ~= "string" then return end
+		for line in res:gmatch("[^\n]+") do
+			local ok2, d = pcall(HttpService.JSONDecode, HttpService, line)
+			if ok2 and type(d) == "table" and d.event == "message" and d.id then
+				since = d.id
+				local ok3, m = pcall(HttpService.JSONDecode, HttpService, d.message or "")
+				if ok3 and type(m) == "table" and m.m then
+					m.t = tonumber(d.time) or m.t
+					pcall(addItem, m)
+				end
+			end
+		end
+	end
+	task.spawn(function()
+		while Gui.Parent do
+			pcall(poll)
+			task.wait(15)
+		end
+	end)
+	T.News.onShow = function() task.spawn(pcall, poll) end
+end)()
 
 ------------------------------------------------------------------
 -- CREDITS
